@@ -53,10 +53,6 @@
   .screen { position:absolute; inset:0; display:none; flex-direction:column; }
   .screen.active { display:flex; animation:fadeIn .45s ease; }
   @keyframes fadeIn { from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
-  /* canvas 는 replaced element 이므로 inset:0 만으로는 늘어나지 않고
-     고유 크기(300x150)를 유지한다. 크기를 명시해야 프레임 전체를 덮는다. */
-  #rainCanvas { position:absolute; inset:0; width:100%; height:100%;
-    z-index:2; pointer-events:none; }
   #goldFlash { position:absolute; inset:0; z-index:40; pointer-events:none; display:none;
     background:radial-gradient(circle, rgba(217,185,106,.35), transparent 65%);
     animation:goldPop .5s ease; }
@@ -464,7 +460,7 @@
 
   <!-- 타이틀 -->
   <div class="screen active" id="scr-title">
-    <img id="titleImg" alt=""><canvas id="rainCanvas"></canvas><div class="title-veil"></div>
+    <img id="titleImg" alt=""><div class="title-veil"></div>
     <div class="title-inner">
       <div class="lockup">
         <div class="orn"></div>
@@ -740,32 +736,6 @@ function fitStage(){
 }
 addEventListener('resize', fitStage);
 
-/* ---------- 타이틀 빗줄기 ---------- */
-function startRain(){
-  const cv=document.getElementById('rainCanvas'); if(!cv) return;
-  const ctx=cv.getContext('2d');
-  // 화면을 꽉 채우면 --s 가 1을 넘을 수 있다. 백킹 스토어를 배율만큼 키워야
-  // 확대된 상태에서 빗줄기가 뭉개지지 않는다. 좌표는 정규화(0~1)라 그대로 동작한다.
-  let px=1;
-  function size(){
-    px=Math.max(1, parseFloat(getComputedStyle(cv).getPropertyValue('--s'))||1);
-    cv.width=Math.round(cv.clientWidth*px); cv.height=Math.round(cv.clientHeight*px);
-  }
-  // fitStage 의 resize 리스너가 먼저 등록되어 있어 --s 가 갱신된 뒤 이 함수가 읽는다.
-  size(); addEventListener('resize', size);
-  const drops=Array.from({length:110},()=>({x:Math.random()*1.2,y:Math.random(),l:.03+Math.random()*.06,s:.35+Math.random()*.5}));
-  (function loop(){
-    ctx.clearRect(0,0,cv.width,cv.height);
-    ctx.strokeStyle='rgba(180,200,230,.28)'; ctx.lineWidth=px;
-    for(const d of drops){
-      const x=d.x*cv.width, y=d.y*cv.height;
-      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-cv.height*d.l*.12, y+cv.height*d.l); ctx.stroke();
-      d.y+=d.s*.02; d.x-=.0015;
-      if(d.y>1){ d.y=-.05; d.x=Math.random()*1.2; }
-    }
-    requestAnimationFrame(loop);
-  })();
-}
 function flashGold(){
   const el=document.getElementById('goldFlash');
   el.style.display='none'; void el.offsetWidth; el.style.display='block';
@@ -1087,7 +1057,7 @@ const G = {
     fitStage();
     // 정적 마크업의 아이콘 자리표시자를 채운다 (SVG 문자열 단일 출처 유지)
     document.querySelectorAll('[data-ico]').forEach(el=>{ el.innerHTML=ICON[el.dataset.ico]||''; });
-    this.setImg('titleImg','titleMain'); startRain(); preloadAll();
+    this.setImg('titleImg','titleMain'); preloadAll();
   },
   // 남은 목숨은 불 켜진 촛불, 잃은 목숨은 연기만 나는 꺼진 촛불
   candlesHTML(){ return ICON.candle.repeat(this.hearts)+ICON.candleOut.repeat(3-this.hearts); },
