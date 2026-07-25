@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>푸른 달의 밤 — 추리 어드벤처</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2312100e'/><circle cx='16' cy='16' r='8' fill='%238fb8ce'/><circle cx='21' cy='13' r='7' fill='%2312100e'/></svg>">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Apple SD Gothic Neo','Nanum Myeongjo','Malgun Gothic',serif;
+    background:#12100e; color:#e8e2d5;
+    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:10px;
+  }
+  #game { position:relative; width:1000px; max-width:100%; aspect-ratio:16/10;
+    background:#1a1712; border:1px solid #3d372b; border-radius:14px; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.7); }
+  .screen { position:absolute; inset:0; display:none; flex-direction:column; }
+  .screen.active { display:flex; animation:fadeIn .4s ease; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  #rainCanvas { position:absolute; inset:0; z-index:2; pointer-events:none; }
+  #goldFlash { position:absolute; inset:0; z-index:40; pointer-events:none; display:none;
+    background:radial-gradient(circle, rgba(217,185,106,.35), transparent 65%);
+    animation:goldPop .5s ease; }
+  @keyframes goldPop { from{opacity:1; transform:scale(.8)} to{opacity:0; transform:scale(1.15)} }
+
+  .btn {
+    background:linear-gradient(180deg,#5a4f38,#3d3526); color:#f0e8d8;
+    border:1px solid #7a6c4d; border-radius:8px; padding:11px 22px;
+    font-family:inherit; font-size:.95rem; cursor:pointer; transition:all .15s;
+    font-weight:700;
+  }
+  .btn:hover { background:linear-gradient(180deg,#6d6045,#4a4030); transform:translateY(-1px); }
+  .btn:disabled { opacity:.45; cursor:default; transform:none; }
+  .btn.gold { background:linear-gradient(180deg,#8a6d35,#5c4720); border-color:#c8a55c; }
+
+  /* ---------- 타이틀 ---------- */
+  #scr-title { background:#0d0b09; }
+  #titleImg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.85; }
+  .title-veil { position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(10,8,6,.5), rgba(10,8,6,.1) 45%, rgba(10,8,6,.75)); }
+  .title-inner { position:relative; z-index:2; display:flex; flex-direction:column;
+    align-items:center; padding-top:7%; height:100%; }
+  .title-inner h1 { font-size:3.2rem; letter-spacing:.25em; font-weight:900;
+    color:#e9ddc0; text-shadow:0 0 24px rgba(140,180,255,.45), 0 3px 10px #000; }
+  .title-inner h2 { margin-top:8px; color:#a99f8a; letter-spacing:.5em; font-size:.9rem; }
+  .title-bottom { margin-top:auto; margin-bottom:7%; display:flex; flex-direction:column; align-items:center; gap:10px; }
+
+  /* ---------- 대화(컷씬) ---------- */
+  #scr-dialog { background:#0d0b09; }
+  #dlgBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.5; }
+  #dlgPortrait { position:absolute; right:4%; bottom:22%; height:62%; object-fit:contain;
+    object-position:bottom;
+    filter:drop-shadow(0 10px 30px rgba(0,0,0,.8)); z-index:2; }
+  .dlg-box { position:absolute; left:3%; right:3%; bottom:3%; z-index:3;
+    background:rgba(18,15,10,.92); border:1px solid #6d5f42; border-radius:12px;
+    padding:18px 24px 16px; min-height:19%; }
+  .dlg-name { color:#d9b96a; font-weight:900; margin-bottom:6px; letter-spacing:.05em; }
+  .dlg-text { line-height:1.75; font-size:1.02rem; color:#efe8d8; }
+  .dlg-next { position:absolute; right:18px; bottom:12px; color:#a99f8a; font-size:.8rem; animation:blink 1.2s infinite; }
+  @keyframes blink { 50%{opacity:.2} }
+
+  /* ---------- 허브(저택) ---------- */
+  #scr-hub { background:#161310; padding:20px; gap:14px; }
+  .hub-head { display:flex; justify-content:space-between; align-items:center; }
+  .hub-head h3 { color:#d9b96a; letter-spacing:.15em; font-size:1.15rem; }
+  .hub-stats { display:flex; gap:14px; font-size:.92rem; align-items:center; }
+  .hub-stats .pill { background:#241f17; border:1px solid #4d4433; padding:6px 14px; border-radius:99px; }
+  #hearts { color:#d97a7a; }
+  .hub-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; flex:1; min-height:0; }
+  .room-card { position:relative; border:1px solid #4d4433; border-radius:10px; overflow:hidden;
+    cursor:pointer; transition:transform .15s; background:#0d0b09; }
+  .room-card:hover { transform:scale(1.02); border-color:#c8a55c; }
+  .room-card img { width:100%; height:100%; object-fit:cover; opacity:.75; }
+  .room-label { position:absolute; left:0; right:0; bottom:0; padding:8px 12px;
+    background:linear-gradient(0deg, rgba(10,8,6,.92), transparent);
+    font-weight:800; color:#efe8d8; display:flex; justify-content:space-between; }
+  .room-label small { color:#c8a55c; font-weight:700; }
+  .hub-foot { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+  /* ---------- 방 조사 ---------- */
+  #scr-room { background:#0d0b09; }
+  #roomBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .room-veil { position:absolute; inset:0; background:linear-gradient(0deg, rgba(10,8,6,.85) 0%, transparent 40%); }
+  .room-top { position:relative; z-index:2; padding:14px 20px; display:flex; justify-content:space-between; }
+  .room-title { font-weight:900; font-size:1.2rem; color:#efe8d8; text-shadow:0 2px 8px #000; }
+  .spots { position:absolute; left:3%; right:3%; bottom:3%; z-index:3; display:flex; gap:10px; flex-wrap:wrap; }
+  .spot-btn { flex:1 1 40%; text-align:left; background:rgba(24,20,14,.9); border:1px solid #6d5f42;
+    color:#efe8d8; border-radius:10px; padding:12px 16px; font-family:inherit; font-size:.95rem;
+    cursor:pointer; }
+  .spot-btn:hover { border-color:#c8a55c; background:rgba(40,34,22,.95); }
+  .spot-btn.done { opacity:.55; }
+  .spot-btn.done::after { content:' ✓'; color:#9fce8f; }
+
+  /* ---------- 심문 ---------- */
+  #scr-talk { background:#0d0b09; }
+  #talkBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.35; }
+  #talkPortrait { position:absolute; left:5%; bottom:0; height:78%; object-fit:contain;
+    object-position:bottom; z-index:2;
+    filter:drop-shadow(0 10px 30px rgba(0,0,0,.8)); }
+  .talk-right { position:absolute; right:3%; top:6%; width:52%; z-index:3; display:flex; flex-direction:column; gap:10px; }
+  .talk-name { color:#d9b96a; font-weight:900; font-size:1.2rem; }
+  .talk-desc { color:#a99f8a; font-size:.85rem; margin-bottom:4px; }
+  .q-btn { text-align:left; background:rgba(24,20,14,.92); border:1px solid #6d5f42; color:#efe8d8;
+    border-radius:10px; padding:12px 16px; font-family:inherit; font-size:.93rem; cursor:pointer; }
+  .q-btn:hover { border-color:#c8a55c; }
+  .q-btn.locked { opacity:.5; }
+  .q-btn.asked { opacity:.6; }
+  .q-btn.asked::after { content:' ✓'; color:#9fce8f; }
+  .talk-answer { position:absolute; left:3%; right:3%; bottom:3%; z-index:4;
+    background:rgba(18,15,10,.95); border:1px solid #6d5f42; border-radius:12px;
+    padding:16px 22px; display:none; }
+
+  /* ---------- 추리 ---------- */
+  #scr-deduce { background:#14110d; padding:26px; gap:14px; align-items:center; }
+  #scr-deduce h3 { color:#d9b96a; letter-spacing:.2em; }
+  .deduce-q { font-size:1.15rem; font-weight:800; text-align:center; line-height:1.6; }
+  .deduce-opts { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:88%; }
+  .d-btn { background:#241f17; border:1px solid #5d5240; color:#efe8d8; border-radius:10px;
+    padding:14px 16px; font-family:inherit; font-size:.95rem; cursor:pointer; text-align:left; line-height:1.5; }
+  .d-btn:hover { border-color:#c8a55c; }
+  .d-btn.right { border-color:#9fce8f; background:#1f2a1a; }
+  .d-btn.wrong { border-color:#d97a7a; background:#2a1a1a; }
+  #deduceFb { min-height:2.6em; text-align:center; line-height:1.6; color:#c9bfa8; width:88%; }
+  #deduceProg { color:#a99f8a; font-size:.85rem; }
+
+  /* ---------- 수첩 ---------- */
+  #notebook { position:absolute; inset:6% 10%; z-index:20; background:#211c14;
+    border:1px solid #8a7a55; border-radius:12px; padding:22px 26px; display:none;
+    flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.8); }
+  #notebook h3 { color:#d9b96a; margin-bottom:12px; letter-spacing:.15em; }
+  #clueList { overflow:auto; flex:1; display:flex; flex-direction:column; gap:8px; }
+  .clue-item { background:#191510; border:1px solid #4d4433; border-radius:8px; padding:10px 14px;
+    font-size:.92rem; line-height:1.55; }
+  .clue-item b { color:#c8a55c; }
+  .clue-item.testi b { color:#8fb8ce; }
+  #nbClose { align-self:center; margin-top:12px; }
+
+  /* ---------- 엔딩 ---------- */
+  #scr-end { background:#0d0b09; align-items:center; justify-content:center; text-align:center; }
+  #endImg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.55; }
+  .end-inner { position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:12px; padding:0 8%; }
+  .end-inner h1 { font-size:2rem; color:#e9ddc0; text-shadow:0 3px 12px #000; }
+  .end-inner p { line-height:1.9; color:#efe8d8; text-shadow:0 2px 8px #000; }
+  #endGrade { font-size:1.25rem; color:#d9b96a; font-weight:900; }
+
+  #toast { position:absolute; top:6%; left:50%; transform:translateX(-50%); z-index:30;
+    background:rgba(20,16,10,.95); border:1px solid #c8a55c; color:#e9ddc0; font-weight:800;
+    padding:12px 26px; border-radius:99px; display:none; font-size:.98rem; }
+
+  @media (max-width:720px){
+    .title-inner h1{font-size:2rem}
+    .deduce-opts{grid-template-columns:1fr}
+    #dlgPortrait{height:45%; right:2%}
+    #talkPortrait{height:52%}
+    .talk-right{width:60%}
+  }
+</style>
+</head>
+<body>
+<div id="game">
+
+  <!-- 타이틀 -->
+  <div class="screen active" id="scr-title">
+    <img id="titleImg" alt=""><canvas id="rainCanvas"></canvas><div class="title-veil"></div>
+    <div class="title-inner">
+      <h1>푸른 달의 밤</h1>
+      <h2>THE NIGHT OF THE BLUE MOON</h2>
+      <div class="title-bottom">
+        <button class="btn gold" style="font-size:1.1rem; padding:14px 46px" onclick="G.startPrologue()">사건 시작</button>
+        <div style="color:#a99f8a; font-size:.82rem">폭풍우 치는 밤, 저택에서 가보 '푸른 달'이 사라졌다</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 대화 -->
+  <div class="screen" id="scr-dialog">
+    <img id="dlgBg" alt=""><img id="dlgPortrait" alt="">
+    <div class="dlg-box" onclick="G.nextLine()">
+      <div class="dlg-name" id="dlgName"></div>
+      <div class="dlg-text" id="dlgText"></div>
+      <div class="dlg-next">클릭 ▼</div>
+    </div>
+  </div>
+
+  <!-- 허브 -->
+  <div class="screen" id="scr-hub">
+    <div class="hub-head">
+      <h3>청람장 — 조사 중</h3>
+      <div class="hub-stats">
+        <span class="pill">🔍 단서 <b id="clueN">0</b>/8</span>
+        <span class="pill">💬 증언 <b id="testiN">0</b>/3</span>
+        <span class="pill" id="hearts">🕯 ❤❤❤</span>
+      </div>
+    </div>
+    <div class="hub-grid" id="hubGrid"></div>
+    <div class="hub-foot">
+      <button class="btn" onclick="G.openTalkMenu()">👥 인물 심문</button>
+      <button class="btn" onclick="G.openNotebook()">📓 수첩</button>
+      <button class="btn gold" id="deduceBtn" onclick="G.tryDeduce()">⚖ 추리 시작</button>
+      <button class="btn" id="sndBtn" onclick="this.textContent=SND.toggle()?'🔊':'🔇'">🔊</button>
+    </div>
+  </div>
+
+  <!-- 방 조사 -->
+  <div class="screen" id="scr-room">
+    <img id="roomBg" alt=""><div class="room-veil"></div>
+    <div class="room-top">
+      <div class="room-title" id="roomTitle"></div>
+      <button class="btn" onclick="G.show('scr-hub')">← 저택으로</button>
+    </div>
+    <div class="spots" id="spots"></div>
+  </div>
+
+  <!-- 심문 -->
+  <div class="screen" id="scr-talk">
+    <img id="talkBg" alt=""><img id="talkPortrait" alt="">
+    <div class="talk-right">
+      <div class="talk-name" id="talkName"></div>
+      <div class="talk-desc" id="talkDesc"></div>
+      <div id="talkQs"></div>
+      <button class="btn" style="margin-top:6px" onclick="G.show('scr-hub')">← 저택으로</button>
+    </div>
+    <div class="talk-answer" id="talkAnswer" onclick="this.style.display='none'">
+      <div class="dlg-name" id="ansName"></div>
+      <div class="dlg-text" id="ansText"></div>
+      <div class="dlg-next">클릭하여 닫기</div>
+    </div>
+  </div>
+
+  <!-- 추리 -->
+  <div class="screen" id="scr-deduce">
+    <h3>— 추리 타임 —</h3>
+    <div id="deduceProg"></div>
+    <div class="deduce-q" id="deduceQ"></div>
+    <div class="deduce-opts" id="deduceOpts"></div>
+    <div id="deduceFb"></div>
+  </div>
+
+  <!-- 엔딩 -->
+  <div class="screen" id="scr-end">
+    <img id="endImg" alt="">
+    <div class="end-inner">
+      <h1 id="endTitle"></h1>
+      <p id="endText"></p>
+      <div id="endGrade"></div>
+      <button class="btn gold" onclick="location.reload()">처음부터 다시</button>
+    </div>
+  </div>
+
+  <!-- 수첩 -->
+  <div id="notebook">
+    <h3>📓 탐정 수첩</h3>
+    <div id="clueList"></div>
+    <button class="btn" id="nbClose" onclick="G.closeNotebook()">닫기</button>
+  </div>
+
+  <div id="toast"></div>
+  <div id="goldFlash"></div>
+</div>
+
+<script>
+/* =========================================================
+   푸른 달의 밤 — 추리 어드벤처 (전체 시나리오 내장)
+   ========================================================= */
+
+/* ---------- 이미지 ----------
+   로컬 assets/*.webp 를 먼저 쓰고, 없으면 원본 CDN(png)으로 자동 폴백한다.
+   assets/ 안의 파일은 CDN 원본을 그대로 내려받아 웹용으로 변환한 것:
+   배경 6장은 1376x768, 인물 5장은 배경 제거 + 여백 트림 후 높이 1000px. */
+const CDN_BASE = "https://d8j0ntlcm91z4.cloudfront.net/user_3Ft7J99VZpqixI61Z0zxEss998y/";
+const CDN = {
+  title:  "hf_20260725_034636_7a1b8fb5-e2ee-4982-802e-1d57539ae06c.png",
+  detective:"hf_20260725_035844_f97955a7-7fce-4599-b1dc-4628ab908fd1.png",
+  butler: "hf_20260725_035556_c23b1c9c-2f43-4e77-930b-dd2e68b2a9d7.png",
+  nephew: "hf_20260725_035558_77af6333-5bd2-455e-982a-876460c07c77.png",
+  maid:   "hf_20260725_035559_0f4490c3-2765-4d5c-942e-0c72115965db.png",
+  dealer: "hf_20260725_035600_c964a7a6-adf7-4068-89e9-08ffdf7a4ea4.png",
+  study:  "hf_20260725_034652_dba10f4a-2337-4ca2-ab61-03adad81e88e.png",
+  green:  "hf_20260725_034655_c1c4d08e-a4b5-42ef-a1bf-8bea75aa05cc.png",
+  kitchen:"hf_20260725_034658_c54873e6-96e9-4175-8016-cc0069437b19.png",
+  parlor: "hf_20260725_034701_1681d26c-3f41-496c-a447-c8ba12afeaf8.png",
+  ending: "hf_20260725_034703_4c941bb8-85b0-46e3-99a7-f31fb39972de.png"
+};
+const IMG = {};
+for (const k in CDN) IMG[k] = "assets/" + k + ".webp";
+
+// 화면에 붙은 <img>가 로드에 실패하면 CDN 원본으로 한 번 재시도한다.
+document.addEventListener('error', function(e){
+  const el = e.target;
+  if (!el || el.tagName !== 'IMG') return;
+  const k = el.dataset.k;
+  if (!k || !CDN[k]) return;
+  if (!el.dataset.fb) { el.dataset.fb = "1"; el.src = CDN_BASE + CDN[k]; }
+  else { el.style.display = "none"; }
+}, true);
+
+// 타이틀 화면에서 전체 이미지를 미리 받아둔다(장면 전환 시 깜빡임 방지).
+// detached <img>의 error는 document까지 올라오지 않으므로 폴백을 개별로 건다.
+function preloadAll(){
+  for (const k in IMG){
+    const im = new Image();
+    im.onerror = function(){ im.onerror = null; im.src = CDN_BASE + CDN[k]; };
+    im.src = IMG[k];
+  }
+}
+
+/* ---------- 사운드 (WebAudio, 외부 파일 없음) ---------- */
+const SND = {
+  ctx:null, on:true, rainNodes:null,
+  ensure(){ if(!this.ctx){ try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return this.ctx; },
+  tone(f, dur, type, vol, delay){
+    const c=this.ensure(); if(!c||!this.on) return;
+    const t=c.currentTime+(delay||0);
+    const o=c.createOscillator(), g=c.createGain();
+    o.type=type||'sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(vol||.12, t);
+    g.gain.exponentialRampToValueAtTime(.001, t+dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur);
+  },
+  blip(){ this.tone(520,.06,'triangle',.05); },
+  ding(){ this.tone(880,.12,'sine',.1); this.tone(1320,.25,'sine',.08,.1); },
+  good(){ this.tone(523,.12,'sine',.11); this.tone(659,.12,'sine',.11,.1); this.tone(784,.3,'sine',.11,.2); },
+  bad(){ this.tone(150,.35,'sawtooth',.1); },
+  rain(){
+    const c=this.ensure(); if(!c||this.rainNodes) return;
+    const len=2*c.sampleRate, buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+    const src=c.createBufferSource(); src.buffer=buf; src.loop=true;
+    const f=c.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1400; f.Q.value=.4;
+    const g=c.createGain(); g.gain.value=.035;
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start();
+    this.rainNodes={src,g};
+  },
+  toggle(){
+    this.on=!this.on;
+    if(this.rainNodes) this.rainNodes.g.gain.value=this.on?.035:0;
+    return this.on;
+  }
+};
+document.addEventListener('click', e=>{ if(e.target.closest('button')) SND.blip(); });
+
+/* ---------- 타이틀 빗줄기 ---------- */
+function startRain(){
+  const cv=document.getElementById('rainCanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  function size(){ cv.width=cv.clientWidth; cv.height=cv.clientHeight; }
+  size(); addEventListener('resize', size);
+  const drops=Array.from({length:110},()=>({x:Math.random()*1.2,y:Math.random(),l:.03+Math.random()*.06,s:.35+Math.random()*.5}));
+  (function loop(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.strokeStyle='rgba(180,200,230,.28)'; ctx.lineWidth=1;
+    for(const d of drops){
+      const x=d.x*cv.width, y=d.y*cv.height;
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-cv.height*d.l*.12, y+cv.height*d.l); ctx.stroke();
+      d.y+=d.s*.02; d.x-=.0015;
+      if(d.y>1){ d.y=-.05; d.x=Math.random()*1.2; }
+    }
+    requestAnimationFrame(loop);
+  })();
+}
+function flashGold(){
+  const el=document.getElementById('goldFlash');
+  el.style.display='none'; void el.offsetWidth; el.style.display='block';
+  setTimeout(()=>el.style.display='none', 520);
+}
+
+/* ---------- 단서 ---------- */
+const CLUES = {
+  c1:{ name:"열쇠로 열린 진열장", desc:"부서진 흔적이 전혀 없다. 진열장 열쇠를 가진 사람은 윤 여사와 백 집사, 단 둘뿐." },
+  c2:{ name:"카펫 위의 흰 단추", desc:"서재 카펫에서 발견된 작은 흰 단추. 고급 장갑에 다는 종류다." },
+  c3:{ name:"젖은 발자국", desc:"저택 안쪽에서 온실로 갔다가 다시 안쪽으로 돌아온 발자국. 밖으로 나간 흔적은 없다 — 보석은 아직 저택 안에 있다." },
+  c4:{ name:"흙이 새로 덮인 화분", desc:"온실의 큰 화분. 누군가 최근에 흙을 파헤쳤다가 다시 덮었다." },
+  c5:{ name:"새벽의 찻잔 두 개", desc:"주방 쟁반 위 찻잔 두 개. 카모마일 — 윤 여사가 잠들기 전에만 마시는 차다. 새벽에 여사와 '누군가'가 함께 차를 마셨다." },
+  c6:{ name:"잠긴 뒷문", desc:"주방 뒷문은 안쪽에서 잠겨 있고 먼지가 쌓여 있다. 외부 침입은 불가능 — 범인은 저택 안 사람이다." },
+  c7:{ name:"1974년의 가족사진", desc:"응접실 벽난로 위 낡은 사진. 젊은 윤 여사가 병원 앞에서 어린 아들의 손을 잡고 있다. 아이는… 도진의 아버지다." },
+  c8:{ name:"1974년 매매 계약서", desc:"금고 속 빛바랜 계약서. '사파이어 푸른 달 — 매각'. 50년 전, 진품은 이미 팔렸다. 진열장의 보석은 모조품이었다!" }
+};
+const TESTI = {
+  t1:{ name:"가정부의 목격담", desc:"\"새벽 2시쯤… 집사님이 온실 쪽에서 나오셨어요. 폭우도 아닌데 옷이 젖어 있었죠.\"" },
+  t2:{ name:"조카의 해명", desc:"\"빚이 있는 건 사실이에요. 하지만 다음 달에 할머니가 정리해 주시기로 했어요. 제가 왜 훔치겠어요.\"" },
+  t3:{ name:"골동품상의 속셈", desc:"\"감정사를 부르자고 한 건 나요. 그 보석, 진품이라면 30억은 될 테니까. …진품이라면 말이지.\"" }
+};
+
+/* ---------- 방 ---------- */
+const ROOMS = {
+  study:{ title:"서재 — 사건 현장", img:"study", spots:[
+    { label:"텅 빈 진열장을 살펴본다", clue:"c1" },
+    { label:"카펫 주변을 조사한다", clue:"c2" } ] },
+  green:{ title:"온실", img:"green", spots:[
+    { label:"바닥의 발자국을 따라가 본다", clue:"c3" },
+    { label:"큰 화분을 살펴본다", clue:"c4" } ] },
+  kitchen:{ title:"주방", img:"kitchen", spots:[
+    { label:"쟁반 위 찻잔을 살펴본다", clue:"c5" },
+    { label:"뒷문을 확인한다", clue:"c6" } ] },
+  parlor:{ title:"응접실", img:"parlor", spots:[
+    { label:"벽난로 위 사진을 본다", clue:"c7" },
+    { label:"살짝 열린 금고를 조사한다", clue:"c8" } ] }
+};
+
+/* ---------- 인물 ---------- */
+const PEOPLE = {
+  butler:{ name:"백강현 · 집사(67)", img:"butler",
+    desc:"30년간 청람장을 지켜온 집사. 흐트러짐 없는 몸가짐, 그러나 눈빛 어딘가가 흔들린다.",
+    qs:[
+      { q:"어젯밤 어디에 계셨습니까?",
+        a:"자정까지 서재 정리를 했습니다. 그 후에는… 제 방에 있었습니다.", },
+      { q:"장갑을 보여주시겠습니까?", need:"c2",
+        a:"…이 장갑 말입니까. (오른쪽 장갑의 단추 하나가 비어 있다) 세탁 중에 떨어진 모양입니다.", },
+      { q:"새벽에 온실에 가셨죠?", need:"t1",
+        a:"…가정부가 그러던가요. (긴 침묵) 탐정님, 어떤 진실은… 모두를 위해 어둠 속에 있어야 합니다.", }
+    ]},
+  nephew:{ name:"윤도진 · 조카(28)", img:"nephew",
+    desc:"윤 여사의 하나뿐인 손주뻘 조카. 사업 실패로 빚을 졌다는 소문이 있다.",
+    qs:[
+      { q:"보석이 사라져서 곤란하신가요?",
+        a:"곤란하죠. 할머니가 쓰러지셨으니까요. …보석 따위보다 그게 더 큰일 아닌가요.", },
+      { q:"빚 이야기를 들었습니다", testi:"t2",
+        a:"\"빚이 있는 건 사실이에요. 하지만 다음 달에 할머니가 정리해 주시기로 했어요. 제가 왜 훔치겠어요.\"", },
+      { q:"이 사진 속 아이를 아십니까?", need:"c7",
+        a:"…아버지예요. 어릴 때 큰 수술을 받으셨다고만 들었어요. 그 수술비를 할머니가 어떻게 마련했는지는… 아무도 말해주지 않았죠.", }
+    ]},
+  maid:{ name:"오말숙 · 가정부(55)", img:"maid",
+    desc:"저택의 살림을 도맡은 가정부. 정직하고 소심하다. 무언가 본 듯한 눈치다.",
+    qs:[
+      { q:"어젯밤 이상한 점은 없었나요?",
+        a:"밤새 비바람이 심해서… 온실 유리 두드리는 소리인 줄 알았는데, 지금 생각하니 발소리였을지도 몰라요.", },
+      { q:"누군가 온실에 가는 걸 보셨나요?", need:"c3", testi:"t1",
+        a:"\"새벽 2시쯤… 집사님이 온실 쪽에서 나오셨어요. 폭우도 아닌데 옷이 젖어 있었죠. 못 본 척했지만… 마음에 걸려서요.\"", },
+      { q:"윤 여사님은 어떤 분입니까?",
+        a:"50년을 모셨지만 한 번도 화내신 적 없는 분이에요. 다만… 그 보석 앞에서는 늘 슬픈 얼굴을 하셨어요. 이상하죠, 가보인데.", }
+    ]},
+  dealer:{ name:"강태오 · 골동품상(44)", img:"dealer",
+    desc:"보석 감정을 위해 저택에 초대된 골동품상. 값비싼 물건 앞에서 눈이 빛나는 남자.",
+    qs:[
+      { q:"감정사는 왜 부르자고 했습니까?", testi:"t3",
+        a:"\"감정사를 부르자고 한 건 나요. 그 보석, 진품이라면 30억은 될 테니까. …진품이라면 말이지.\"", },
+      { q:"'진품이라면'이라니, 무슨 뜻이죠?", need:"t3",
+        a:"오래 이 바닥에 있으면 감이 옵니다. 유리 너머로 봤을 때… 광채가 너무 얌전했어요. 뭐, 내일 감정하면 알게 되겠죠. (어깨를 으쓱한다)", },
+      { q:"어젯밤 알리바이가 있습니까?",
+        a:"손님방에서 잤습니다. 증인은 없지만 — 내가 훔쳤다면 이 폭풍우에 어디로 가져갑니까? 다리도 끊겼는데. (웃는다)", }
+    ]}
+};
+
+/* ---------- 프롤로그 / 진상 ---------- */
+const PROLOGUE = [
+  { name:"내레이션", text:"폭풍우가 몰아치는 밤. 낡은 양관 '청람장'의 다리가 물에 잠겨 끊겼다. 저택에 머물던 나, 탐정 한세인은 비명 같은 외침에 잠에서 깼다.", img:"title" },
+  { name:"가정부", text:"보, 보석이…! 서재의 '푸른 달'이 사라졌어요! 여사님은 충격으로 쓰러지셨고요…!", img:"study", pt:"maid" },
+  { name:"한세인", text:"다리가 끊겼으니 경찰은 아침까지 못 온다. 그리고 범인은 — 아직 이 저택 안에 있다.", img:"study", pt:"detective" },
+  { name:"한세인", text:"단서 8개를 모두 찾고, 사람들의 증언을 들은 뒤… 추리를 시작하자.", img:"study", pt:"detective" }
+];
+const REVEAL = [
+  { name:"한세인", text:"범인은 당신입니다, 백강현 집사님.", pt:"detective", img:"study" },
+  { name:"백강현", text:"…….", pt:"butler", img:"study" },
+  { name:"한세인", text:"부서지지 않은 진열장, 당신 장갑의 단추, 온실로 이어진 발자국, 그리고 새벽의 찻잔 두 개. — 하지만 이건 도둑질이 아니었죠.", pt:"detective", img:"study" },
+  { name:"백강현", text:"…50년 전, 여사님은 아드님의 수술비를 위해 '푸른 달'을 파셨습니다. 그리고 그 자리에 모조품을 두셨지요. 가문의 자존심을 지키기 위해서.", pt:"butler", img:"parlor" },
+  { name:"백강현", text:"그런데 내일 감정사가 온다지 않습니까. 50년의 비밀이 한순간에 부서질 참이었습니다. 여사님은 어젯밤 저를 부르셨고… 저는 모조품을 온실 화분에 묻었습니다.", pt:"butler", img:"green" },
+  { name:"윤도진", text:"그럼… 할머니가 보석을 판 돈으로 살린 게, 우리 아버지였다는 거예요?", pt:"nephew", img:"parlor" },
+  { name:"한세인", text:"보석은 처음부터 도난당하지 않았습니다. 이 저택에서 가장 값진 것은 — 애초에 보석이 아니었으니까요.", pt:"detective", img:"ending" }
+];
+
+/* ---------- 추리 문항 ---------- */
+const DEDUCE = [
+  { q:"Q1. '푸른 달'을 가져간 사람은 누구인가?",
+    opts:["집사 백강현","조카 윤도진","가정부 오말숙","골동품상 강태오"], ans:0,
+    fb:["정답. 열쇠, 단추, 발자국… 모든 단서가 그를 가리킨다.",
+        "아니다. 그의 빚은 다음 달 정리될 예정이었다 — 동기가 없다.",
+        "아니다. 그녀는 목격자일 뿐, 진열장 열쇠도 없다.",
+        "아니다. 다리가 끊긴 밤, 그는 보석을 가지고 나갈 수도 없었다."] },
+  { q:"Q2. 결정적인 근거의 조합은?",
+    opts:["열쇠로 열린 진열장 + 흰 단추 + 젖은 발자국","찻잔 두 개 + 조카의 빚","골동품상의 루페 + 감정사 소식","잠긴 뒷문 + 가족사진"], ans:0,
+    fb:["정답. 열쇠를 가진 자, 장갑의 단추, 온실을 오간 흔적 — 완벽한 연결이다.",
+        "찻잔은 '부탁'의 증거일 뿐, 범인을 특정하지 못한다.",
+        "동기의 방향은 맞지만 범행의 증거는 아니다.",
+        "그 단서들은 '내부자 소행'과 '이유'를 말해줄 뿐이다."] },
+  { q:"Q3. 사라진 보석은 지금 어디에 있는가?",
+    opts:["온실의 큰 화분 속","저택 밖 — 이미 반출됐다","금고 안","벽난로 뒤"], ans:0,
+    fb:["정답. 새로 덮인 흙이 모든 것을 말해준다.",
+        "발자국은 저택 안으로 되돌아왔다. 뒷문도 잠겨 있었다.",
+        "금고에 있던 건 보석이 아니라 오래된 계약서였다.",
+        "벽난로 위에 있던 건 1974년의 사진이다."] },
+  { q:"Q4. 집사가 보석을 숨긴 진짜 이유는?",
+    opts:["여사의 50년 비밀 — 모조품임을 감추기 위해","보석을 팔아 빚을 갚으려고","조카에게 누명을 씌우려고","골동품상을 골탕 먹이려고"], ans:0,
+    fb:["정답. 1974년의 계약서와 병원 앞 사진 — 진품은 반세기 전, 한 아이의 생명이 되었다.",
+        "그에게 빚은 없다. 30년을 저택과 함께한 사람이다.",
+        "그는 오히려 조카가 의심받지 않도록 침묵했다.",
+        "그런 가벼운 이유로 50년의 비밀을 짊어질 사람이 아니다."] }
+];
+
+/* ---------- 게임 상태 ---------- */
+const G = {
+  clues:new Set(), testis:new Set(), hearts:3, wrong:0,
+  dlgQueue:[], dlgIdx:0, dlgDone:null, deduceIdx:0, currentRoom:null,
+
+  $(id){ return document.getElementById(id); },
+  show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    this.$(id).classList.add('active');
+    if(id==='scr-hub') this.renderHub();
+  },
+  toast(t,ms=2200){
+    const el=this.$('toast'); el.textContent=t; el.style.display='block';
+    clearTimeout(el._h); el._h=setTimeout(()=>el.style.display='none',ms);
+  },
+  setImg(id,key){ const el=this.$(id); if(!key){ el.style.display='none'; return; }
+    el.style.display=''; el.dataset.k=key; el.dataset.fb=''; el.src=IMG[key]; },
+
+  init(){ this.setImg('titleImg','title'); startRain(); preloadAll(); },
+
+  /* ----- 대화 시스템 ----- */
+  playDialog(lines, done){
+    this.dlgQueue=lines; this.dlgIdx=0; this.dlgDone=done;
+    this.show('scr-dialog'); this.renderLine();
+  },
+  renderLine(){
+    const l=this.dlgQueue[this.dlgIdx];
+    this.$('dlgName').textContent=l.name;
+    this.setImg('dlgBg', l.img||null);
+    this.setImg('dlgPortrait', l.pt||null);
+    // 타자기 효과
+    clearInterval(this._tw);
+    const el=this.$('dlgText'); el.textContent='';
+    this._twFull=l.text; let i=0;
+    this._tw=setInterval(()=>{
+      i++; el.textContent=this._twFull.slice(0,i);
+      if(i>=this._twFull.length){ clearInterval(this._tw); this._tw=null; }
+    }, 22);
+  },
+  nextLine(){
+    if(this._tw){ clearInterval(this._tw); this._tw=null;
+      this.$('dlgText').textContent=this._twFull; return; }
+    this.dlgIdx++;
+    if(this.dlgIdx>=this.dlgQueue.length){ const d=this.dlgDone; this.dlgDone=null; d&&d(); }
+    else this.renderLine();
+  },
+
+  startPrologue(){ SND.rain(); this.playDialog(PROLOGUE, ()=>this.show('scr-hub')); },
+
+  /* ----- 허브 ----- */
+  renderHub(){
+    this.$('clueN').textContent=this.clues.size;
+    this.$('testiN').textContent=this.testis.size;
+    this.$('hearts').innerHTML='🕯 '+'❤'.repeat(this.hearts)+'♡'.repeat(3-this.hearts);
+    const grid=this.$('hubGrid'); grid.innerHTML='';
+    for(const key in ROOMS){
+      const r=ROOMS[key];
+      const found=r.spots.filter(s=>this.clues.has(s.clue)).length;
+      const card=document.createElement('div'); card.className='room-card';
+      card.innerHTML='<img data-k="'+r.img+'" src="'+IMG[r.img]+'">'+
+        '<div class="room-label"><span>'+r.title+'</span><small>단서 '+found+'/'+r.spots.length+'</small></div>';
+      card.onclick=()=>this.openRoom(key);
+      grid.appendChild(card);
+    }
+    const ready=this.clues.size>=8 && this.testis.has('t1');
+    this.$('deduceBtn').disabled=!ready;
+    this.$('deduceBtn').textContent = ready ? '⚖ 추리 시작 — 준비 완료!' : '⚖ 추리 시작 (단서 8개 + 가정부의 목격담 필요)';
+  },
+
+  openRoom(key){
+    this.currentRoom=key; const r=ROOMS[key];
+    this.$('roomTitle').textContent=r.title;
+    this.setImg('roomBg', r.img);
+    const sp=this.$('spots'); sp.innerHTML='';
+    r.spots.forEach(s=>{
+      const b=document.createElement('button');
+      b.className='spot-btn'+(this.clues.has(s.clue)?' done':'');
+      b.textContent='🔍 '+s.label;
+      b.onclick=()=>{
+        const c=CLUES[s.clue];
+        if(!this.clues.has(s.clue)){
+          this.clues.add(s.clue);
+          SND.ding();
+          this.toast('📓 단서 발견 — '+c.name);
+          b.classList.add('done');
+        }
+        this.playDialog([{name:'단서 · '+c.name, text:c.desc, img:r.img}], ()=>this.openRoom(key));
+      };
+      sp.appendChild(b);
+    });
+    this.show('scr-room');
+  },
+
+  /* ----- 심문 ----- */
+  openTalkMenu(){
+    // 허브 그리드를 인물 카드로 바꿔 심문 대상을 고른다 (renderHub가 방 카드로 되돌린다)
+    const grid=this.$('hubGrid'); grid.innerHTML='';
+    for(const key in PEOPLE){
+      const p=PEOPLE[key];
+      const card=document.createElement('div'); card.className='room-card';
+      card.innerHTML='<img data-k="'+p.img+'" src="'+IMG[p.img]+'" style="object-position:top">'+
+        '<div class="room-label"><span>'+p.name+'</span><small>심문하기</small></div>';
+      card.onclick=()=>this.openTalk(key);
+      grid.appendChild(card);
+    }
+    this.$('deduceBtn').disabled=true;
+    this.toast('심문할 인물을 선택하세요 (수첩·추리는 저택 화면에서)', 2600);
+  },
+  openTalk(key){
+    const p=PEOPLE[key];
+    this.$('talkName').textContent=p.name;
+    this.$('talkDesc').textContent=p.desc;
+    this.setImg('talkPortrait', p.img);
+    this.setImg('talkBg','parlor');
+    const box=this.$('talkQs'); box.innerHTML='';
+    p.qs.forEach((qa,i)=>{
+      const locked=qa.need && !(this.clues.has(qa.need)||this.testis.has(qa.need));
+      const b=document.createElement('button');
+      b.className='q-btn'+(locked?' locked':'')+(qa._asked?' asked':'');
+      b.style.width='100%'; b.style.marginBottom='8px';
+      b.textContent=(locked?'🔒 ':'💬 ')+qa.q+(locked?' (관련 단서 필요)':'');
+      b.onclick=()=>{
+        if(locked){ this.toast('이 질문을 하려면 관련 단서나 증언이 먼저 필요하다.'); return; }
+        qa._asked=true;
+        this.$('ansName').textContent=p.name;
+        this.$('ansText').textContent=qa.a;
+        this.$('talkAnswer').style.display='block';
+        if(qa.testi && !this.testis.has(qa.testi)){
+          this.testis.add(qa.testi);
+          SND.ding();
+          this.toast('💬 증언 확보 — '+TESTI[qa.testi].name);
+        }
+        this.openTalk(key);
+      };
+      box.appendChild(b);
+    });
+    this.show('scr-talk');
+  },
+
+  /* ----- 수첩 ----- */
+  openNotebook(){
+    const list=this.$('clueList'); list.innerHTML='';
+    if(this.clues.size===0 && this.testis.size===0)
+      list.innerHTML='<div class="clue-item">아직 모은 단서가 없다. 방을 조사해 보자.</div>';
+    this.clues.forEach(id=>{
+      const c=CLUES[id];
+      list.innerHTML+='<div class="clue-item"><b>🔍 '+c.name+'</b><br>'+c.desc+'</div>';
+    });
+    this.testis.forEach(id=>{
+      const t=TESTI[id];
+      list.innerHTML+='<div class="clue-item testi"><b>💬 '+t.name+'</b><br>'+t.desc+'</div>';
+    });
+    this.$('notebook').style.display='flex';
+  },
+  closeNotebook(){ this.$('notebook').style.display='none'; },
+
+  /* ----- 추리 ----- */
+  tryDeduce(){
+    if(this.clues.size<8 || !this.testis.has('t1')) return;
+    this.deduceIdx=0;
+    this.playDialog([
+      {name:'한세인', text:'단서는 모두 모였다. 이제 진실을 말할 시간이다. — 모두 응접실로 모여 주시죠.', pt:'detective', img:'parlor'}
+    ], ()=>{ this.show('scr-deduce'); this.renderDeduce(); });
+  },
+  renderDeduce(){
+    const d=DEDUCE[this.deduceIdx];
+    this.$('deduceProg').textContent='추리 '+(this.deduceIdx+1)+' / '+DEDUCE.length+'  ·  🕯 '+'❤'.repeat(this.hearts)+'♡'.repeat(3-this.hearts);
+    this.$('deduceQ').textContent=d.q;
+    this.$('deduceFb').textContent='';
+    const box=this.$('deduceOpts'); box.innerHTML='';
+    d.opts.forEach((o,i)=>{
+      const b=document.createElement('button'); b.className='d-btn'; b.textContent=o;
+      b.onclick=()=>this.answer(i,b);
+      box.appendChild(b);
+    });
+  },
+  answer(i,btn){
+    const d=DEDUCE[this.deduceIdx];
+    const fb=this.$('deduceFb');
+    if(i===d.ans){
+      SND.good(); flashGold();
+      btn.classList.add('right');
+      fb.textContent='✔ '+d.fb[i];
+      document.querySelectorAll('.d-btn').forEach(b=>b.disabled=true);
+      setTimeout(()=>{
+        this.deduceIdx++;
+        if(this.deduceIdx>=DEDUCE.length) this.playDialog(REVEAL, ()=>this.ending());
+        else this.renderDeduce();
+      }, 1600);
+    } else {
+      SND.bad();
+      btn.classList.add('wrong'); btn.disabled=true;
+      this.wrong++; this.hearts--;
+      fb.textContent='✘ '+d.fb[i];
+      if(this.hearts<=0){
+        this.hearts=3;
+        this.playDialog([
+          {name:'한세인', text:'…성급했다. 촛불을 다시 켜고, 수첩을 처음부터 훑어보자. 진실은 도망가지 않는다.', pt:'detective', img:'study'}
+        ], ()=>{ this.show('scr-deduce'); this.renderDeduce(); });
+      } else {
+        this.$('deduceProg').textContent='추리 '+(this.deduceIdx+1)+' / '+DEDUCE.length+'  ·  🕯 '+'❤'.repeat(this.hearts)+'♡'.repeat(3-this.hearts);
+      }
+    }
+  },
+
+  /* ----- 엔딩 ----- */
+  ending(){
+    this.setImg('endImg','ending');
+    const grade=this.wrong===0?'S — 완벽한 추리':this.wrong<=2?'A — 훌륭한 추리':'B — 진실에 도달';
+    this.$('endTitle').textContent='사건 종결 — 푸른 달의 밤';
+    this.$('endText').textContent='아침, 비가 그쳤다. 감정 의뢰는 조용히 취소되었고, 모조품 "푸른 달"은 다시 진열장으로 돌아갔다. 50년 전 보석 하나가 살린 생명과, 그것을 지켜온 두 사람의 침묵. — 청람장에서 가장 값진 것은, 처음부터 보석이 아니었다.';
+    this.$('endGrade').textContent='최종 등급: '+grade+'  ·  오답 '+this.wrong+'회';
+    this.show('scr-end');
+  }
+};
+G.init();
+</script>
+</body>
+</html>
