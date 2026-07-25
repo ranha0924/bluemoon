@@ -58,6 +58,7 @@ const CASES = { case1:CASE1, case2:CASE2, case3:CASE3 };
 웹 배포용으로 다음과 같이 변환했다 — 합계 38.6MB → 1.8MB.
 
 - **배경** — WebP q82, 원본 해상도 유지
+  - 공통: `titleMain` (앤솔러지 타이틀 키비주얼 — 두 사건의 파일이 놓인 책상)
   - 사건 1: `title` `study` `green` `kitchen` `parlor` `ending`
   - 사건 2: `title2` `room4` `yard` `lobby` `kitchen2` `ending2`
 - **인물** — 배경이 제거된 PNG에서 투명 여백을 잘라내고 높이 1000px로 축소, WebP q86 (알파 유지)

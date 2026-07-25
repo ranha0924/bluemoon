@@ -594,6 +594,8 @@
    배경 6장은 1376x768, 인물 5장은 배경 제거 + 여백 트림 후 높이 1000px. */
 const CDN_BASE = "https://d8j0ntlcm91z4.cloudfront.net/user_3Ft7J99VZpqixI61Z0zxEss998y/";
 const CDN = {
+  // 앤솔러지 타이틀 화면 전용 키비주얼. title(사건1 키비주얼)은 로비 카드가 계속 쓴다.
+  titleMain: "hf_20260725_060237_0cb81033-a193-4c24-8d90-62cbb5c6fbd1.png",
   title:  "hf_20260725_034636_7a1b8fb5-e2ee-4982-802e-1d57539ae06c.png",
   detective:"hf_20260725_035844_f97955a7-7fce-4599-b1dc-4628ab908fd1.png",
   butler: "hf_20260725_035556_c23b1c9c-2f43-4e77-930b-dd2e68b2a9d7.png",
@@ -1085,7 +1087,7 @@ const G = {
     fitStage();
     // 정적 마크업의 아이콘 자리표시자를 채운다 (SVG 문자열 단일 출처 유지)
     document.querySelectorAll('[data-ico]').forEach(el=>{ el.innerHTML=ICON[el.dataset.ico]||''; });
-    this.setImg('titleImg','title'); startRain(); preloadAll();
+    this.setImg('titleImg','titleMain'); startRain(); preloadAll();
   },
   // 남은 목숨은 불 켜진 촛불, 잃은 목숨은 연기만 나는 꺼진 촛불
   candlesHTML(){ return ICON.candle.repeat(this.hearts)+ICON.candleOut.repeat(3-this.hearts); },
