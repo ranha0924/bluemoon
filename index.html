@@ -12,13 +12,21 @@
     background:#12100e; color:#e8e2d5;
     display:flex; align-items:center; justify-content:center; min-height:100vh; padding:10px;
   }
-  #game { position:relative; width:1000px; max-width:100%; aspect-ratio:16/10;
+  /* #fit 은 화면 폭에 맞춰 줄어들고, #game 은 1000x625 고정 좌표계를 유지한 채
+     통째로 축소된다. 글자·여백·토스트가 프레임과 같은 비율로 줄어들기 때문에
+     레이아웃이 어떤 화면 크기에서도 정확히 같은 모양을 유지한다. */
+  #fit { position:relative; width:1000px; max-width:100%; aspect-ratio:16/10; }
+  #game { position:absolute; top:0; left:0; width:1000px; height:625px;
+    transform-origin:top left; transform:scale(var(--s,1));
     background:#1a1712; border:1px solid #3d372b; border-radius:14px; overflow:hidden;
     box-shadow:0 20px 60px rgba(0,0,0,.7); }
   .screen { position:absolute; inset:0; display:none; flex-direction:column; }
   .screen.active { display:flex; animation:fadeIn .4s ease; }
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  #rainCanvas { position:absolute; inset:0; z-index:2; pointer-events:none; }
+  /* canvas 는 replaced element 이므로 inset:0 만으로는 늘어나지 않고
+     고유 크기(300x150)를 유지한다. 크기를 명시해야 프레임 전체를 덮는다. */
+  #rainCanvas { position:absolute; inset:0; width:100%; height:100%;
+    z-index:2; pointer-events:none; }
   #goldFlash { position:absolute; inset:0; z-index:40; pointer-events:none; display:none;
     background:radial-gradient(circle, rgba(217,185,106,.35), transparent 65%);
     animation:goldPop .5s ease; }
@@ -98,7 +106,8 @@
   #talkPortrait { position:absolute; left:5%; bottom:0; height:78%; object-fit:contain;
     object-position:bottom; z-index:2;
     filter:drop-shadow(0 10px 30px rgba(0,0,0,.8)); }
-  .talk-right { position:absolute; right:3%; top:6%; width:52%; z-index:3; display:flex; flex-direction:column; gap:10px; }
+  /* top:15% — 다른 화면들처럼 상단 중앙 띠를 토스트 알림에 비워 둔다 */
+  .talk-right { position:absolute; right:3%; top:15%; width:52%; z-index:3; display:flex; flex-direction:column; gap:10px; }
   .talk-name { color:#d9b96a; font-weight:900; font-size:1.2rem; }
   .talk-desc { color:#a99f8a; font-size:.85rem; margin-bottom:4px; }
   .q-btn { text-align:left; background:rgba(24,20,14,.92); border:1px solid #6d5f42; color:#efe8d8;
@@ -146,19 +155,14 @@
 
   #toast { position:absolute; top:6%; left:50%; transform:translateX(-50%); z-index:30;
     background:rgba(20,16,10,.95); border:1px solid #c8a55c; color:#e9ddc0; font-weight:800;
-    padding:12px 26px; border-radius:99px; display:none; font-size:.98rem; }
+    padding:12px 26px; border-radius:99px; display:none; font-size:.98rem;
+    max-width:82%; text-align:center; }
 
-  @media (max-width:720px){
-    .title-inner h1{font-size:2rem}
-    .deduce-opts{grid-template-columns:1fr}
-    #dlgPortrait{height:45%; right:2%}
-    #talkPortrait{height:52%}
-    .talk-right{width:60%}
-  }
+  /* #game 이 통째로 축소되므로 화면 크기별 레이아웃 분기는 필요하지 않다. */
 </style>
 </head>
 <body>
-<div id="game">
+<div id="fit"><div id="game">
 
   <!-- 타이틀 -->
   <div class="screen active" id="scr-title">
@@ -257,7 +261,7 @@
 
   <div id="toast"></div>
   <div id="goldFlash"></div>
-</div>
+</div></div>
 
 <script>
 /* =========================================================
@@ -339,6 +343,15 @@ const SND = {
   }
 };
 document.addEventListener('click', e=>{ if(e.target.closest('button')) SND.blip(); });
+
+/* ---------- 화면 맞춤 배율 ---------- */
+// #game 은 항상 1000x625 좌표계로 그려지고, 실제 표시 크기만 배율로 맞춘다.
+const STAGE_W = 1000;
+function fitStage(){
+  const fit = document.getElementById('fit');
+  document.getElementById('game').style.setProperty('--s', fit.clientWidth / STAGE_W);
+}
+addEventListener('resize', fitStage);
 
 /* ---------- 타이틀 빗줄기 ---------- */
 function startRain(){
@@ -505,7 +518,7 @@ const G = {
   setImg(id,key){ const el=this.$(id); if(!key){ el.style.display='none'; return; }
     el.style.display=''; el.dataset.k=key; el.dataset.fb=''; el.src=IMG[key]; },
 
-  init(){ this.setImg('titleImg','title'); startRain(); preloadAll(); },
+  init(){ fitStage(); this.setImg('titleImg','title'); startRain(); preloadAll(); },
 
   /* ----- 대화 시스템 ----- */
   playDialog(lines, done){
