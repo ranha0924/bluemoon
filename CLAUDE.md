@@ -72,11 +72,18 @@ UI를 수정했다면 최소한 아래를 확인한다.
    바운딩 박스가 교차하지 않고, 패널이 프레임 밖으로 나가지 않아야 한다.
    눈으로 보고 넘기지 말고 좌표를 계산해서 검사한다.
 
-`.spot-btn`, `.q-btn`, `.btn` 같은 셀렉터는 여러 화면에 중복으로 존재한다.
-반드시 `#scr-room .btn`처럼 화면 단위로 범위를 좁혀서 잡는다.
+`.screen`은 `display:none`으로 숨기기만 하고 DOM에서 제거하지 않는다. 그래서 **모든 화면의
+버튼이 항상 동시에 존재한다.** `class="btn"`은 6개 컨테이너(`scr-title` / `scr-hub`×4 /
+`scr-room` / `scr-talk` / `scr-end` / `#notebook`)에 9개가 깔려 있고, `"← 저택으로"` 같은
+텍스트 셀렉터도 `scr-room`과 `scr-talk` 두 곳에 걸린다. 반드시 `#scr-room .btn`처럼
+화면 단위로 범위를 좁혀서 잡는다.
+
+`.spot-btn`(`#spots`)과 `.q-btn`(`#talkQs`)은 각각 한 화면에만 생성되므로 이 문제가 없다.
 
 ## Git
 
 - 작업 브랜치: `claude/blue-moon-mystery-game-skl6db`
+- **푸시 전에 `git branch --show-current`로 현재 브랜치를 확인한다.** 머지 직후에는 `main`이
+  체크아웃된 상태로 남아 있을 수 있어서, 확인 없이 밀면 `main`으로 바로 들어간다.
 - 푸시는 `git push -u origin <branch>`. 네트워크 실패 시에만 2s/4s/8s/16s 백오프로 재시도.
 - PR은 사용자가 명시적으로 요청할 때만 만든다.
