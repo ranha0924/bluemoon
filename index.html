@@ -1145,14 +1145,14 @@ const INSPECT = {
     c.beginPath(); c.arc(0,0,66,0,Math.PI*2);
     c.lineWidth=2; c.strokeStyle='rgba(80,68,48,.55)'; c.stroke();
     // 음각 느낌: 어두운 본선 + 아래쪽 하이라이트
-    const lines=[['LOUVAIN',-16,17],['GANTS',10,12]];
+    // 구멍은 중심에서 27.8~45.8 (반지름 9, 중심 ±26,±26) 범위를 차지한다.
+    // |y| <= 16 띠는 구멍이 전혀 없으므로 각인을 줄여 그 안에만 넣는다.
+    const lines=[['LOUVAIN',-8,10],['GANTS',2,7],['· PARIS ·',11,5.5]];
     for(const [txt,y,size] of lines){
       c.font='700 '+size+'px "Nanum Myeongjo", serif';
       c.fillStyle='rgba(74,62,42,.85)'; c.fillText(txt,0,y);
-      c.fillStyle='rgba(255,248,228,.4)'; c.fillText(txt,0,y+1.4);
+      c.fillStyle='rgba(255,248,228,.4)'; c.fillText(txt,0,y+size*0.11);
     }
-    c.font='700 9px "Nanum Myeongjo", serif';
-    c.fillStyle='rgba(74,62,42,.7)'; c.fillText('· PARIS ·',0,36);
     c.restore();
   },
   face(pts, nz, isBack){
