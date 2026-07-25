@@ -257,7 +257,7 @@
     letter-spacing:.1em; text-shadow:0 2px 8px #000; }
   .spots { position:absolute; left:3%; right:3%; bottom:3%; z-index:3; display:flex; gap:10px; flex-wrap:wrap; }
   /* 증거 태그: 좌상단이 접힌 종이택 */
-  .spot-btn { position:relative; flex:1 1 40%; text-align:left;
+  .spot-btn { position:relative; flex:1 1 28%; text-align:left;
     background:linear-gradient(180deg, rgba(38,32,22,.94), rgba(18,15,10,.96));
     border:1px solid var(--gold-soft); color:#efe8d8; border-radius:6px;
     padding:12px 16px; font-family:var(--ff-body); font-size:.95rem; cursor:pointer;
@@ -436,6 +436,37 @@
     from { transform:scale(1.6) rotate(-14deg); opacity:0 }
     to   { transform:scale(1) rotate(-5deg); opacity:1 } }
 
+  /* ---------- 3D 증거 조사 ---------- */
+  #scr-inspect { background:#0f0d0a; }
+  .inspect-top { position:relative; z-index:2; padding:14px 20px;
+    display:flex; justify-content:space-between; align-items:center; }
+  .inspect-stage { flex:1; min-height:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px; padding:0 20px 22px; }
+  /* 캔버스 주위 코너 장식 프레임 */
+  .inspect-frame { position:relative; width:430px; height:300px;
+    background:radial-gradient(120% 90% at 50% 18%, #23201a, #100e0a 70%);
+    border:1px solid var(--gold-soft); outline:1px solid var(--gold-dim); outline-offset:3px;
+    border-radius:4px; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
+  #inspectCanvas { position:absolute; inset:0; width:100%; height:100%;
+    border-radius:inherit; cursor:grab; touch-action:none; }
+  #inspectCanvas.dragging { cursor:grabbing; }
+  /* 하단 힌트: 서류 라벨 */
+  .inspect-hint { display:flex; align-items:center; gap:10px;
+    font-family:var(--ff-title); font-size:11px; letter-spacing:.2em; color:#c2b596;
+    background:linear-gradient(180deg, rgba(200,165,92,.09), rgba(0,0,0,.22));
+    border-top:1px solid rgba(200,165,92,.3); border-bottom:1px solid rgba(200,165,92,.3);
+    padding:5px 18px; }
+  .inspect-hint::before { content:'◆'; color:var(--gold); font-size:7px; }
+  /* 각인 발견 금색 도장 */
+  .stamp { position:absolute; right:14px; top:14px; z-index:3; display:none;
+    font-family:var(--ff-title); font-size:13px; font-weight:800; letter-spacing:.14em;
+    color:#f2dfa8; padding:9px 14px;
+    border:2px solid var(--gold); border-radius:3px;
+    box-shadow:inset 0 0 0 1px rgba(200,165,92,.35), 0 4px 14px rgba(0,0,0,.55);
+    background:radial-gradient(circle at 35% 30%, rgba(200,165,92,.28), rgba(0,0,0,.3));
+    pointer-events:none; }
+  .stamp.on { display:block; animation:stampIn .3s cubic-bezier(.2,1.5,.4,1) both; }
+
   /* ---------- 토스트 ---------- */
   #toast { position:absolute; top:6%; left:50%; transform:translateX(-50%); z-index:30;
     background:linear-gradient(180deg,#2a2317,#171208);
@@ -562,9 +593,24 @@
       <p id="endText"></p>
       <div id="endGrade"></div>
       <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center">
-        <button class="btn" onclick="G.backToLobby()">📁 다른 사건 파일</button>
+        <button class="btn" onclick="G.backToLobby()"><i data-ico="folder"></i>다른 사건 파일</button>
         <button class="btn gold" onclick="location.reload()">처음부터 다시</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 3D 증거 조사 -->
+  <div class="screen" id="scr-inspect">
+    <div class="inspect-top">
+      <div class="room-title" id="inspectTitle"></div>
+      <button class="btn back" onclick="G.closeInspect()">돌아가기</button>
+    </div>
+    <div class="inspect-stage">
+      <div class="inspect-frame corners">
+        <canvas id="inspectCanvas"></canvas>
+        <div class="stamp" id="inspectStamp">각인 발견</div>
+      </div>
+      <div class="inspect-hint" id="inspectHint"></div>
     </div>
   </div>
 
@@ -783,7 +829,9 @@ const CASE1 = {
   ROOMS: {
     study:{ title:"서재 — 사건 현장", img:"study", spots:[
       { label:"텅 빈 진열장을 살펴본다", clue:"c1" },
-      { label:"카펫 주변을 조사한다", clue:"c2" } ] },
+      { label:"카펫 주변을 조사한다", clue:"c2" },
+      // 단서를 새로 주지 않는 선택 조사. c2 를 먼저 찾아야 열린다.
+      { label:"흰 단추를 집어 들고 살펴본다", inspect:"button", needs:"c2" } ] },
     green:{ title:"온실", img:"green", spots:[
       { label:"바닥의 발자국을 따라가 본다", clue:"c3" },
       { label:"큰 화분을 살펴본다", clue:"c4" } ] },
@@ -1031,11 +1079,194 @@ const CASE2 = {
 /* 사건 목록 — 로비가 이 순서대로 카드를 만든다. */
 const CASES = { case1:CASE1, case2:CASE2 };
 
+/* ---------- 3D 증거 조사 (canvas 2D 직접 투영, 외부 라이브러리 없음) ----------
+   단추를 원통으로 모델링한다. 뒤집으면 뒷면 각인이 드러난다.
+   시점은 -z 쪽. 즉 회전된 법선의 z 가 음수인 면이 보인다. */
+const INSPECT = {
+  cv:null, ctx:null, raf:0, px:1,
+  rx:-0.32, ry:0.55, drag:false, lx:0, ly:0, auto:true, found:false,
+  SEG:56, R:1, T:0.24,
+  HINT_TURN:'드래그해 단추를 돌려 보십시오',
+  HINT_FOUND:'뒷면 각인 — 수입 장갑 제조사의 표식',
+
+  open(){
+    this.cv=document.getElementById('inspectCanvas');
+    this.ctx=this.cv.getContext('2d');
+    // 매번 초기 각도로 되돌린다 (각인은 다시 찾아야 도장이 뜬다)
+    this.rx=-0.32; this.ry=0.55; this.auto=true; this.drag=false; this.found=false;
+    this.resize();
+    if(!this._bound){ this.bind(); this._bound=true; }
+    this.stop(); this.loop();
+  },
+  rot(x,y,z){
+    let c=Math.cos(this.ry), s=Math.sin(this.ry);
+    const x1=x*c+z*s, z1=-x*s+z*c;
+    c=Math.cos(this.rx); s=Math.sin(this.rx);
+    return [x1, y*c-z1*s, y*s+z1*c];
+  },
+  proj(p){
+    const f=4.2, k=f/(f+p[2]);
+    return [this.cx+p[0]*this.sc*k, this.cy+p[1]*this.sc*k];
+  },
+  ring(zLocal){
+    const out=[];
+    for(let i=0;i<this.SEG;i++){
+      const a=i/this.SEG*Math.PI*2;
+      out.push(this.proj(this.rot(Math.cos(a)*this.R, Math.sin(a)*this.R, zLocal)));
+    }
+    return out;
+  },
+  // 평면(z=zLocal) 위에 그리기 위한 아핀 기저. 단위는 1/100.
+  // sx=-1 은 그 면의 x 축을 뒤집는다. 뒷면 각인은 물리적으로 반대편 표면에 있으므로
+  // 이걸 적용하지 않으면 뒤집어 봤을 때 글자가 거울상으로 나온다.
+  planeTransform(zLocal, sx){
+    const k=sx||1;
+    const O=this.proj(this.rot(0,0,zLocal));
+    const U=this.proj(this.rot(k,0,zLocal)), V=this.proj(this.rot(0,1,zLocal));
+    return [(U[0]-O[0])/100,(U[1]-O[1])/100,(V[0]-O[0])/100,(V[1]-O[1])/100,O[0],O[1]];
+  },
+  path(pts){
+    const c=this.ctx; c.beginPath(); c.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++) c.lineTo(pts[i][0],pts[i][1]);
+    c.closePath();
+  },
+  holes(zLocal){
+    const c=this.ctx; c.save(); c.setTransform(...this.planeTransform(zLocal));
+    for(const [hx,hy] of [[-26,-26],[26,-26],[-26,26],[26,26]]){
+      c.beginPath(); c.arc(hx,hy,9,0,Math.PI*2);
+      c.fillStyle='#3b3428'; c.fill();
+      c.lineWidth=2.2; c.strokeStyle='rgba(255,255,255,.35)'; c.stroke();
+    }
+    c.restore();
+  },
+  engraving(zLocal){
+    const c=this.ctx; c.save(); c.setTransform(...this.planeTransform(zLocal,-1));
+    c.textAlign='center'; c.textBaseline='middle';
+    c.beginPath(); c.arc(0,0,66,0,Math.PI*2);
+    c.lineWidth=2; c.strokeStyle='rgba(80,68,48,.55)'; c.stroke();
+    // 음각 느낌: 어두운 본선 + 아래쪽 하이라이트
+    const lines=[['LOUVAIN',-16,17],['GANTS',10,12]];
+    for(const [txt,y,size] of lines){
+      c.font='700 '+size+'px "Nanum Myeongjo", serif';
+      c.fillStyle='rgba(74,62,42,.85)'; c.fillText(txt,0,y);
+      c.fillStyle='rgba(255,248,228,.4)'; c.fillText(txt,0,y+1.4);
+    }
+    c.font='700 9px "Nanum Myeongjo", serif';
+    c.fillStyle='rgba(74,62,42,.7)'; c.fillText('· PARIS ·',0,36);
+    c.restore();
+  },
+  face(pts, nz, isBack){
+    const c=this.ctx;
+    this.path(pts);
+    const lit=Math.min(1, Math.max(0, -nz));               // 정면일수록 밝다
+    const g=c.createLinearGradient(this.cx-this.sc,this.cy-this.sc,this.cx+this.sc,this.cy+this.sc);
+    const base=isBack?226:246, tone=Math.round(base-46+lit*46);
+    g.addColorStop(0,'rgb('+tone+','+(tone-4)+','+(tone-16)+')');
+    g.addColorStop(.55,'rgb('+Math.round(tone*.9)+','+Math.round(tone*.88)+','+Math.round(tone*.82)+')');
+    g.addColorStop(1,'rgb('+Math.round(tone*.72)+','+Math.round(tone*.7)+','+Math.round(tone*.64)+')');
+    c.fillStyle=g; c.fill();
+    c.lineWidth=1.4*this.px; c.strokeStyle='rgba(60,50,34,.55)'; c.stroke();
+  },
+  render(){
+    const c=this.ctx, w=this.cv.width, h=this.cv.height;
+    this.px=Math.max(1, parseFloat(getComputedStyle(this.cv).getPropertyValue('--s'))||1);
+    c.setTransform(1,0,0,1,0,0);
+    c.clearRect(0,0,w,h);
+    this.cx=w/2; this.cy=h/2; this.sc=Math.min(w,h)*0.30;
+
+    const frontN=this.rot(0,0,-1), backN=this.rot(0,0,1);
+    const zF=this.rot(0,0,-this.T/2)[2], zB=this.rot(0,0,this.T/2)[2];
+    const ringF=this.ring(-this.T/2), ringB=this.ring(this.T/2);
+
+    // 그림자
+    c.save();
+    c.beginPath();
+    c.ellipse(this.cx, this.cy+this.sc*1.25, this.sc*0.95, this.sc*0.20, 0, 0, Math.PI*2);
+    c.fillStyle='rgba(0,0,0,.42)'; c.filter='blur(6px)'; c.fill();
+    c.restore();
+
+    const farFirst = zF > zB;   // z 가 큰 쪽이 멀다
+    const drawFace=(back)=>{
+      const pts=back?ringB:ringF, n=back?backN:frontN;
+      this.face(pts, n[2], back);
+      if(n[2]<0){                             // 보이는 면에만 디테일
+        this.holes(back?this.T/2:-this.T/2);
+        if(back) this.engraving(this.T/2);
+      }
+    };
+    if(farFirst) drawFace(false); else drawFace(true);
+
+    // 측면(림): 사각형 조각을 깊이 순으로
+    const quads=[];
+    for(let i=0;i<this.SEG;i++){
+      const j=(i+1)%this.SEG;
+      const a=(i+0.5)/this.SEG*Math.PI*2;
+      const n=this.rot(Math.cos(a),Math.sin(a),0);
+      const mid=this.rot(Math.cos(a)*this.R, Math.sin(a)*this.R, 0)[2];
+      quads.push({pts:[ringF[i],ringF[j],ringB[j],ringB[i]], n, mid});
+    }
+    quads.sort((a,b)=>b.mid-a.mid);
+    for(const q of quads){
+      if(q.n[2]>0.02) continue;                       // 뒤쪽 측면은 생략
+      const lit=Math.min(1,Math.max(0,-q.n[2]*0.55 - q.n[1]*0.5 + 0.25));
+      const t=Math.round(120+lit*115);
+      const col='rgb('+t+','+(t-6)+','+(t-18)+')';
+      this.path(q.pts);
+      this.ctx.fillStyle=col; this.ctx.fill();
+      // 조각을 같은 색으로 한 번 더 스트로크해 인접 조각 사이 실틈(줄무늬)을 덮는다
+      this.ctx.lineWidth=1.2*this.px; this.ctx.strokeStyle=col; this.ctx.stroke();
+    }
+
+    if(farFirst) drawFace(true); else drawFace(false);
+
+    // 각인 발견 판정: 뒷면이 충분히 정면을 향했을 때
+    if(!this.found && backN[2] < -0.55){
+      this.found=true;
+      SND.ding(); flashGold();
+      document.getElementById('inspectStamp').classList.add('on');
+      document.getElementById('inspectHint').textContent=this.HINT_FOUND;
+    }
+  },
+  loop(){
+    if(this.auto) this.ry+=0.006;
+    this.render();
+    this.raf=requestAnimationFrame(()=>this.loop());
+  },
+  stop(){ if(this.raf) cancelAnimationFrame(this.raf); this.raf=0; },
+  resize(){
+    const s=Math.max(1, parseFloat(getComputedStyle(this.cv).getPropertyValue('--s'))||1);
+    this.cv.width=Math.round(this.cv.clientWidth*s);
+    this.cv.height=Math.round(this.cv.clientHeight*s);
+  },
+  bind(){
+    const cv=this.cv;
+    const down=e=>{ this.drag=true; this.auto=false; cv.classList.add('dragging');
+      const t=e.touches?e.touches[0]:e; this.lx=t.clientX; this.ly=t.clientY;
+      if(e.cancelable) e.preventDefault(); };
+    const move=e=>{
+      if(!this.drag) return;
+      const t=e.touches?e.touches[0]:e;
+      const s=Math.max(.2, parseFloat(getComputedStyle(cv).getPropertyValue('--s'))||1);
+      this.ry += (t.clientX-this.lx)/s*0.011;
+      this.rx += (t.clientY-this.ly)/s*0.011;
+      this.rx=Math.max(-1.25, Math.min(1.25, this.rx));
+      this.lx=t.clientX; this.ly=t.clientY;
+      if(e.cancelable) e.preventDefault();
+    };
+    const up=()=>{ this.drag=false; cv.classList.remove('dragging'); };
+    cv.addEventListener('mousedown',down); cv.addEventListener('touchstart',down,{passive:false});
+    addEventListener('mousemove',move);    cv.addEventListener('touchmove',move,{passive:false});
+    addEventListener('mouseup',up);        addEventListener('touchend',up);
+    addEventListener('resize',()=>{ if(this.raf) this.resize(); });
+  }
+};
+
 /* ---------- 게임 상태 ---------- */
 const G = {
   // C = 현재 선택된 사건 데이터. 아래 로직은 전역 시나리오 상수를 일절 참조하지 않는다.
   C:null, caseKey:null,
   clues:new Set(), testis:new Set(), asked:new Set(), hearts:3, wrong:0,
+  inspected:new Set(),   // 3D 조사 이력. 단서 수·추리 진입 조건에는 영향 없음.
   dlgQueue:[], dlgIdx:0, dlgDone:null, deduceIdx:0, currentRoom:null,
 
   $(id){ return document.getElementById(id); },
@@ -1119,7 +1350,7 @@ const G = {
   // 사건 진입점. 진행 상태를 전부 초기화하므로 로비를 오가도 이전 사건이 남지 않는다.
   startCase(key){
     this.caseKey=key; this.C=CASES[key];
-    this.clues=new Set(); this.testis=new Set(); this.asked=new Set();
+    this.clues=new Set(); this.testis=new Set(); this.asked=new Set(); this.inspected=new Set();
     this.hearts=3; this.wrong=0; this.deduceIdx=0; this.currentRoom=null;
     this.closeNotebook();
     this.$('talkAnswer').style.display='none';
@@ -1140,10 +1371,11 @@ const G = {
     const grid=this.$('hubGrid'); grid.innerHTML='';
     for(const key in this.C.ROOMS){
       const r=this.C.ROOMS[key];
-      const found=r.spots.filter(s=>this.clues.has(s.clue)).length;
+      const clueSpots=r.spots.filter(s=>s.clue);   // 조사 전용 지점은 단서 수에서 제외
+      const found=clueSpots.filter(s=>this.clues.has(s.clue)).length;
       const card=document.createElement('div'); card.className='room-card';
       card.innerHTML='<img data-k="'+r.img+'" src="'+IMG[r.img]+'">'+
-        '<div class="room-label"><span>'+r.title+'</span><small>단서 '+found+'/'+r.spots.length+'</small></div>';
+        '<div class="room-label"><span>'+r.title+'</span><small>단서 '+found+'/'+clueSpots.length+'</small></div>';
       card.onclick=()=>this.openRoom(key);
       grid.appendChild(card);
     }
@@ -1162,6 +1394,19 @@ const G = {
     const sp=this.$('spots'); sp.innerHTML='';
     r.spots.forEach(s=>{
       const b=document.createElement('button');
+      if(s.inspect){
+        const locked=s.needs && !this.clues.has(s.needs);
+        b.className='spot-btn'+(locked?' locked':'')+(this.inspected.has(s.inspect)?' done':'');
+        b.innerHTML=(locked?ICON.lock:ICON.folder)+'<span>'+s.label+'</span>';
+        b.onclick=()=>{
+          if(locked){
+            this.toast(ICON.lock+'<span>먼저 '+this.C.CLUES[s.needs].name+'를 찾아야 한다.</span>');
+            return;
+          }
+          this.openInspect(s.inspect, s.needs);
+        };
+        sp.appendChild(b); return;
+      }
       b.className='spot-btn'+(this.clues.has(s.clue)?' done':'');
       b.innerHTML=ICON.mag+'<span>'+s.label+'</span>';
       b.onclick=()=>{
@@ -1177,6 +1422,21 @@ const G = {
       sp.appendChild(b);
     });
     this.show('scr-room');
+  },
+
+  /* ----- 3D 증거 조사 ----- */
+  openInspect(kind, clueRef){
+    this.inspected.add(kind);
+    const c=clueRef && this.C.CLUES[clueRef];
+    this.$('inspectTitle').textContent='증거 조사'+(c?' — '+c.name:'');
+    this.$('inspectStamp').classList.remove('on');
+    this.$('inspectHint').textContent=INSPECT.HINT_TURN;
+    this.show('scr-inspect');
+    INSPECT.open();
+  },
+  closeInspect(){
+    INSPECT.stop();
+    this.openRoom(this.currentRoom||'study');
   },
 
   /* ----- 심문 ----- */
