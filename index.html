@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>푸른 달의 밤 — 추리 어드벤처</title>
+<title>한세인 사건 파일 — 추리 어드벤처</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2312100e'/><circle cx='16' cy='16' r='8' fill='%238fb8ce'/><circle cx='21' cy='13' r='7' fill='%2312100e'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -144,6 +144,32 @@
     align-items:center; gap:10px; }
   .ver { position:absolute; right:16px; bottom:12px; z-index:3;
     font-size:9px; letter-spacing:.22em; color:rgba(200,165,92,.45); }
+
+  /* ---------- 로비(사건 선택) ----------
+     허브와 같은 고서 톤. 카드는 키비주얼이 꽉 차고 하단에 어두운 정보부를 얹는다. */
+  /* 상단 여백 8px + 헤더 24px = 허브와 같은 자리(y 8..32).
+     토스트 밴드가 y 38..85 라서 헤더를 그 위로 올려야 글자가 가리지 않는다. */
+  #scr-lobby { background:#14110d; padding:8px 30px 18px; gap:14px; }
+  .lobby-head { flex:0 0 auto; height:24px; line-height:24px; text-align:center;
+    font-family:var(--ff-title); font-weight:700; font-size:1.05rem; color:var(--gold);
+    letter-spacing:.34em; padding-left:.34em; text-shadow:0 2px 10px rgba(0,0,0,.6); }
+  .case-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; flex:1; min-height:0; }
+  .case-card { position:relative; border:1px solid var(--gold-soft); border-radius:4px;
+    overflow:hidden; cursor:pointer; background:#0d0b09;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+    transition:transform .18s, border-color .18s, box-shadow .18s; }
+  .case-card:hover { transform:scale(1.02); border-color:var(--gold);
+    box-shadow:0 12px 30px rgba(0,0,0,.6); }
+  /* position:absolute — 이미지 로드에 실패해 숨겨져도 카드 높이가 무너지지 않는다. */
+  .case-card img { position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; opacity:.8; }
+  .case-info { position:absolute; left:0; right:0; bottom:0; z-index:2; padding:14px 16px 15px;
+    background:linear-gradient(0deg, rgba(10,8,6,.97) 32%, rgba(10,8,6,.72) 72%, transparent); }
+  .case-no { color:var(--gold); font-size:10px; letter-spacing:.26em; font-weight:700; }
+  .case-name { font-family:var(--ff-title); font-weight:800; font-size:1.3rem; color:#fff;
+    letter-spacing:.06em; margin:5px 0 7px; text-shadow:0 2px 8px #000; }
+  .case-desc { font-size:.79rem; line-height:1.65; color:#c4baa4; }
+  .lobby-foot { flex:0 0 auto; display:flex; justify-content:center; }
 
   /* ---------- 대화(컷씬) ---------- */
   #scr-dialog { background:#0d0b09; }
@@ -442,15 +468,24 @@
     <div class="title-inner">
       <div class="lockup">
         <div class="orn"></div>
-        <h1>푸른 달의 밤</h1>
-        <h2>THE NIGHT OF THE BLUE MOON</h2>
+        <h1>한세인 사건 파일</h1>
+        <h2>THE CASEBOOK OF HAN SEIN</h2>
         <div class="orn"></div>
       </div>
       <div class="title-bottom">
-        <button class="btn gold" style="font-size:1.1rem; padding:14px 46px" onclick="G.startPrologue()">사건 시작</button>
-        <div style="color:#a99f8a; font-size:.82rem">폭풍우 치는 밤, 저택에서 가보 '푸른 달'이 사라졌다</div>
+        <button class="btn gold" style="font-size:1.1rem; padding:14px 46px" onclick="G.show('scr-lobby')">사건 파일 열기</button>
+        <div style="color:#a99f8a; font-size:.82rem">두 개의 사건 파일이 탐정을 기다리고 있다</div>
       </div>
-      <div class="ver">ver 2.0</div>
+      <div class="ver">ver 3.0</div>
+    </div>
+  </div>
+
+  <!-- 로비(사건 선택) -->
+  <div class="screen" id="scr-lobby">
+    <div class="lobby-head">— 사건 파일 선택 —</div>
+    <div class="case-grid" id="caseGrid"></div>
+    <div class="lobby-foot">
+      <button class="btn back" onclick="G.show('scr-title')">타이틀로</button>
     </div>
   </div>
 
@@ -467,11 +502,11 @@
   <!-- 허브 -->
   <div class="screen" id="scr-hub">
     <div class="hub-head">
-      <h3>청람장 — 조사 중</h3>
+      <h3 id="hubTitle">청람장 — 조사 중</h3>
       <div class="hub-stats">
-        <span class="stat"><i data-ico="mag"></i>단서<b id="clueN">0</b><span class="stat-s">/8</span></span>
+        <span class="stat"><i data-ico="mag"></i>단서<b id="clueN">0</b><span class="stat-s" id="clueTot">/8</span></span>
         <i class="cb-rule"></i>
-        <span class="stat"><i data-ico="talk"></i>증언<b id="testiN">0</b><span class="stat-s">/3</span></span>
+        <span class="stat"><i data-ico="talk"></i>증언<b id="testiN">0</b><span class="stat-s" id="testiTot">/3</span></span>
         <i class="cb-rule"></i>
         <span class="stat" id="hearts"></span>
       </div>
@@ -490,7 +525,7 @@
     <img id="roomBg" alt=""><div class="room-veil"></div>
     <div class="room-top">
       <div class="room-title" id="roomTitle"></div>
-      <button class="btn back" onclick="G.show('scr-hub')">저택으로</button>
+      <button class="btn back" id="roomBack" onclick="G.show('scr-hub')">저택으로</button>
     </div>
     <div class="spots" id="spots"></div>
   </div>
@@ -502,7 +537,7 @@
       <div class="talk-name" id="talkName"></div>
       <div class="talk-desc" id="talkDesc"></div>
       <div id="talkQs"></div>
-      <button class="btn back" style="margin-top:6px" onclick="G.show('scr-hub')">저택으로</button>
+      <button class="btn back" id="talkBack" style="margin-top:6px" onclick="G.show('scr-hub')">저택으로</button>
     </div>
     <div class="talk-answer" id="talkAnswer" onclick="this.style.display='none'">
       <div class="dlg-name" id="ansName"></div>
@@ -530,7 +565,10 @@
       <div class="orn"></div>
       <p id="endText"></p>
       <div id="endGrade"></div>
-      <button class="btn gold" onclick="location.reload()">처음부터 다시</button>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center">
+        <button class="btn" onclick="G.backToLobby()">📁 다른 사건 파일</button>
+        <button class="btn gold" onclick="location.reload()">처음부터 다시</button>
+      </div>
     </div>
   </div>
 
@@ -566,7 +604,19 @@ const CDN = {
   green:  "hf_20260725_034655_c1c4d08e-a4b5-42ef-a1bf-8bea75aa05cc.png",
   kitchen:"hf_20260725_034658_c54873e6-96e9-4175-8016-cc0069437b19.png",
   parlor: "hf_20260725_034701_1681d26c-3f41-496c-a447-c8ba12afeaf8.png",
-  ending: "hf_20260725_034703_4c941bb8-85b0-46e3-99a7-f31fb39972de.png"
+  ending: "hf_20260725_034703_4c941bb8-85b0-46e3-99a7-f31fb39972de.png",
+  // CASE 2 — 설산의 마지막 손님 (배경 6장 + 인물 5장)
+  title2:  "hf_20260725_042245_e3d38f0b-2720-46a1-8fc8-28069566a2f4.png",
+  room4:   "hf_20260725_042248_ead26945-1826-4ae2-9f92-f83b0326a12e.png",
+  lobby:   "hf_20260725_042250_778e738c-be21-4b11-b1fd-ca513e16bf74.png",
+  kitchen2:"hf_20260725_042253_e0b52453-fb7b-4586-b166-e86bcc46cd9d.png",
+  yard:    "hf_20260725_042255_78838f89-a4ce-4491-a48d-a60b1e0f14ee.png",
+  ending2: "hf_20260725_042258_9643d779-0bf1-4cba-8313-1af5fb78c9c8.png",
+  owner:   "hf_20260725_042823_3dc37d51-28a0-48fe-88c2-1503ab1cd2ef.png",
+  broker:  "hf_20260725_042824_c9eff0f7-f898-496d-af17-33f3e2466b09.png",
+  hiker:   "hf_20260725_042825_5b565764-a531-4bbf-9286-b21c013a55e9.png",
+  cook:    "hf_20260725_043231_be3a5f35-19e1-486a-b4c9-9bb182169f0c.png",
+  author:  "hf_20260725_042828_05aa6073-b471-4321-a09f-e54e99f05df5.png"
 };
 const IMG = {};
 for (const k in CDN) IMG[k] = "assets/" + k + ".webp";
@@ -636,7 +686,7 @@ const ICON = {
 
 /* ---------- 사운드 (WebAudio, 외부 파일 없음) ---------- */
 const SND = {
-  ctx:null, on:true, rainNodes:null,
+  ctx:null, on:true, rainNodes:null, wantRain:false,
   ensure(){ if(!this.ctx){ try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return this.ctx; },
   tone(f, dur, type, vol, delay){
     const c=this.ensure(); if(!c||!this.on) return;
@@ -661,9 +711,19 @@ const SND = {
     src.connect(f); f.connect(g); g.connect(c.destination); src.start();
     this.rainNodes={src,g};
   },
+  // 빗소리는 사건 1(폭풍우) 전용. 사건 2(폭설)에서는 볼륨만 0으로 내린다 —
+  // 한 번 만든 노드를 끊지 않고 재사용해야 사건을 오갈 때 잡음이 생기지 않는다.
+  setRain(want){
+    this.wantRain=!!want;
+    if(this.wantRain) this.rain();
+    this.applyRain();
+  },
+  applyRain(){
+    if(this.rainNodes) this.rainNodes.g.gain.value=(this.on&&this.wantRain)?.035:0;
+  },
   toggle(){
     this.on=!this.on;
-    if(this.rainNodes) this.rainNodes.g.gain.value=this.on?.035:0;
+    this.applyRain();
     return this.on;
   }
 };
@@ -710,131 +770,300 @@ function flashGold(){
   setTimeout(()=>el.style.display='none', 520);
 }
 
-/* ---------- 단서 ---------- */
-const CLUES = {
-  c1:{ name:"열쇠로 열린 진열장", desc:"부서진 흔적이 전혀 없다. 진열장 열쇠를 가진 사람은 윤 여사와 백 집사, 단 둘뿐." },
-  c2:{ name:"카펫 위의 흰 단추", desc:"서재 카펫에서 발견된 작은 흰 단추. 고급 장갑에 다는 종류다." },
-  c3:{ name:"젖은 발자국", desc:"저택 안쪽에서 온실로 갔다가 다시 안쪽으로 돌아온 발자국. 밖으로 나간 흔적은 없다 — 보석은 아직 저택 안에 있다." },
-  c4:{ name:"흙이 새로 덮인 화분", desc:"온실의 큰 화분. 누군가 최근에 흙을 파헤쳤다가 다시 덮었다." },
-  c5:{ name:"새벽의 찻잔 두 개", desc:"주방 쟁반 위 찻잔 두 개. 카모마일 — 윤 여사가 잠들기 전에만 마시는 차다. 새벽에 여사와 '누군가'가 함께 차를 마셨다." },
-  c6:{ name:"잠긴 뒷문", desc:"주방 뒷문은 안쪽에서 잠겨 있고 먼지가 쌓여 있다. 외부 침입은 불가능 — 범인은 저택 안 사람이다." },
-  c7:{ name:"1974년의 가족사진", desc:"응접실 벽난로 위 낡은 사진. 젊은 윤 여사가 병원 앞에서 어린 아들의 손을 잡고 있다. 아이는… 도진의 아버지다." },
-  c8:{ name:"1974년 매매 계약서", desc:"금고 속 빛바랜 계약서. '사파이어 푸른 달 — 매각'. 50년 전, 진품은 이미 팔렸다. 진열장의 보석은 모조품이었다!" }
-};
-const TESTI = {
-  t1:{ name:"가정부의 목격담", desc:"\"새벽 2시쯤… 집사님이 온실 쪽에서 나오셨어요. 폭우도 아닌데 옷이 젖어 있었죠.\"" },
-  t2:{ name:"조카의 해명", desc:"\"빚이 있는 건 사실이에요. 하지만 다음 달에 할머니가 정리해 주시기로 했어요. 제가 왜 훔치겠어요.\"" },
-  t3:{ name:"골동품상의 속셈", desc:"\"감정사를 부르자고 한 건 나요. 그 보석, 진품이라면 30억은 될 테니까. …진품이라면 말이지.\"" }
+/* =========================================================
+   시나리오 데이터 — 사건 하나 = 객체 하나.
+   엔진(G)은 항상 현재 선택된 사건 G.C 만 참조한다. 그래서 새 사건을 넣을 때는
+   아래와 같은 모양의 객체를 하나 더 만들어 CASES 에 등록하기만 하면 되고,
+   게임 로직은 한 줄도 건드리지 않는다.
+
+   필수 필드
+     no/name/cover/intro  로비 카드 (cover 는 IMG·CDN 의 이미지 key)
+     hubTitle/hubWord/backLabel/talkBg/rain   허브·심문 화면 표기와 연출
+     needTesti/needLabel  추리 시작에 필요한 증언 id 와 그 표시 이름
+     CLUES/TESTI/ROOMS/PEOPLE/PROLOGUE/REVEAL/DEDUCE
+     deduceIntro/regroup/ending
+   ========================================================= */
+const CASE1 = {
+  no:1, name:"푸른 달의 밤", cover:"title",
+  intro:"폭풍우로 고립된 저택, 사라진 가보 사파이어. 그러나 이 사건의 진범은… 도둑이 아니다.",
+  hubTitle:"청람장 — 조사 중", hubWord:"저택", backLabel:"저택으로",
+  talkBg:"parlor", rain:true,
+  needTesti:"t1", needLabel:"가정부의 목격담",
+
+  /* ---------- 단서 ---------- */
+  CLUES: {
+    c1:{ name:"열쇠로 열린 진열장", desc:"부서진 흔적이 전혀 없다. 진열장 열쇠를 가진 사람은 윤 여사와 백 집사, 단 둘뿐." },
+    c2:{ name:"카펫 위의 흰 단추", desc:"서재 카펫에서 발견된 작은 흰 단추. 고급 장갑에 다는 종류다." },
+    c3:{ name:"젖은 발자국", desc:"저택 안쪽에서 온실로 갔다가 다시 안쪽으로 돌아온 발자국. 밖으로 나간 흔적은 없다 — 보석은 아직 저택 안에 있다." },
+    c4:{ name:"흙이 새로 덮인 화분", desc:"온실의 큰 화분. 누군가 최근에 흙을 파헤쳤다가 다시 덮었다." },
+    c5:{ name:"새벽의 찻잔 두 개", desc:"주방 쟁반 위 찻잔 두 개. 카모마일 — 윤 여사가 잠들기 전에만 마시는 차다. 새벽에 여사와 '누군가'가 함께 차를 마셨다." },
+    c6:{ name:"잠긴 뒷문", desc:"주방 뒷문은 안쪽에서 잠겨 있고 먼지가 쌓여 있다. 외부 침입은 불가능 — 범인은 저택 안 사람이다." },
+    c7:{ name:"1974년의 가족사진", desc:"응접실 벽난로 위 낡은 사진. 젊은 윤 여사가 병원 앞에서 어린 아들의 손을 잡고 있다. 아이는… 도진의 아버지다." },
+    c8:{ name:"1974년 매매 계약서", desc:"금고 속 빛바랜 계약서. '사파이어 푸른 달 — 매각'. 50년 전, 진품은 이미 팔렸다. 진열장의 보석은 모조품이었다!" }
+  },
+  TESTI: {
+    t1:{ name:"가정부의 목격담", desc:"\"새벽 2시쯤… 집사님이 온실 쪽에서 나오셨어요. 폭우도 아닌데 옷이 젖어 있었죠.\"" },
+    t2:{ name:"조카의 해명", desc:"\"빚이 있는 건 사실이에요. 하지만 다음 달에 할머니가 정리해 주시기로 했어요. 제가 왜 훔치겠어요.\"" },
+    t3:{ name:"골동품상의 속셈", desc:"\"감정사를 부르자고 한 건 나요. 그 보석, 진품이라면 30억은 될 테니까. …진품이라면 말이지.\"" }
+  },
+
+  /* ---------- 방 ---------- */
+  ROOMS: {
+    study:{ title:"서재 — 사건 현장", img:"study", spots:[
+      { label:"텅 빈 진열장을 살펴본다", clue:"c1" },
+      { label:"카펫 주변을 조사한다", clue:"c2" } ] },
+    green:{ title:"온실", img:"green", spots:[
+      { label:"바닥의 발자국을 따라가 본다", clue:"c3" },
+      { label:"큰 화분을 살펴본다", clue:"c4" } ] },
+    kitchen:{ title:"주방", img:"kitchen", spots:[
+      { label:"쟁반 위 찻잔을 살펴본다", clue:"c5" },
+      { label:"뒷문을 확인한다", clue:"c6" } ] },
+    parlor:{ title:"응접실", img:"parlor", spots:[
+      { label:"벽난로 위 사진을 본다", clue:"c7" },
+      { label:"살짝 열린 금고를 조사한다", clue:"c8" } ] }
+  },
+
+  /* ---------- 인물 ---------- */
+  PEOPLE: {
+    butler:{ name:"백강현 · 집사(67)", img:"butler",
+      desc:"30년간 청람장을 지켜온 집사. 흐트러짐 없는 몸가짐, 그러나 눈빛 어딘가가 흔들린다.",
+      qs:[
+        { q:"어젯밤 어디에 계셨습니까?",
+          a:"자정까지 서재 정리를 했습니다. 그 후에는… 제 방에 있었습니다.", },
+        { q:"장갑을 보여주시겠습니까?", need:"c2",
+          a:"…이 장갑 말입니까. (오른쪽 장갑의 단추 하나가 비어 있다) 세탁 중에 떨어진 모양입니다.", },
+        { q:"새벽에 온실에 가셨죠?", need:"t1",
+          a:"…가정부가 그러던가요. (긴 침묵) 탐정님, 어떤 진실은… 모두를 위해 어둠 속에 있어야 합니다.", }
+      ]},
+    nephew:{ name:"윤도진 · 조카(28)", img:"nephew",
+      desc:"윤 여사의 하나뿐인 손주뻘 조카. 사업 실패로 빚을 졌다는 소문이 있다.",
+      qs:[
+        { q:"보석이 사라져서 곤란하신가요?",
+          a:"곤란하죠. 할머니가 쓰러지셨으니까요. …보석 따위보다 그게 더 큰일 아닌가요.", },
+        { q:"빚 이야기를 들었습니다", testi:"t2",
+          a:"\"빚이 있는 건 사실이에요. 하지만 다음 달에 할머니가 정리해 주시기로 했어요. 제가 왜 훔치겠어요.\"", },
+        { q:"이 사진 속 아이를 아십니까?", need:"c7",
+          a:"…아버지예요. 어릴 때 큰 수술을 받으셨다고만 들었어요. 그 수술비를 할머니가 어떻게 마련했는지는… 아무도 말해주지 않았죠.", }
+      ]},
+    maid:{ name:"오말숙 · 가정부(55)", img:"maid",
+      desc:"저택의 살림을 도맡은 가정부. 정직하고 소심하다. 무언가 본 듯한 눈치다.",
+      qs:[
+        { q:"어젯밤 이상한 점은 없었나요?",
+          a:"밤새 비바람이 심해서… 온실 유리 두드리는 소리인 줄 알았는데, 지금 생각하니 발소리였을지도 몰라요.", },
+        { q:"누군가 온실에 가는 걸 보셨나요?", need:"c3", testi:"t1",
+          a:"\"새벽 2시쯤… 집사님이 온실 쪽에서 나오셨어요. 폭우도 아닌데 옷이 젖어 있었죠. 못 본 척했지만… 마음에 걸려서요.\"", },
+        { q:"윤 여사님은 어떤 분입니까?",
+          a:"50년을 모셨지만 한 번도 화내신 적 없는 분이에요. 다만… 그 보석 앞에서는 늘 슬픈 얼굴을 하셨어요. 이상하죠, 가보인데.", }
+      ]},
+    dealer:{ name:"강태오 · 골동품상(44)", img:"dealer",
+      desc:"보석 감정을 위해 저택에 초대된 골동품상. 값비싼 물건 앞에서 눈이 빛나는 남자.",
+      qs:[
+        { q:"감정사는 왜 부르자고 했습니까?", testi:"t3",
+          a:"\"감정사를 부르자고 한 건 나요. 그 보석, 진품이라면 30억은 될 테니까. …진품이라면 말이지.\"", },
+        { q:"'진품이라면'이라니, 무슨 뜻이죠?", need:"t3",
+          a:"오래 이 바닥에 있으면 감이 옵니다. 유리 너머로 봤을 때… 광채가 너무 얌전했어요. 뭐, 내일 감정하면 알게 되겠죠. (어깨를 으쓱한다)", },
+        { q:"어젯밤 알리바이가 있습니까?",
+          a:"손님방에서 잤습니다. 증인은 없지만 — 내가 훔쳤다면 이 폭풍우에 어디로 가져갑니까? 다리도 끊겼는데. (웃는다)", }
+      ]}
+  },
+
+  /* ---------- 프롤로그 / 진상 ---------- */
+  PROLOGUE: [
+    { name:"내레이션", text:"폭풍우가 몰아치는 밤. 낡은 양관 '청람장'의 다리가 물에 잠겨 끊겼다. 저택에 머물던 나, 탐정 한세인은 비명 같은 외침에 잠에서 깼다.", img:"title" },
+    { name:"가정부", text:"보, 보석이…! 서재의 '푸른 달'이 사라졌어요! 여사님은 충격으로 쓰러지셨고요…!", img:"study", pt:"maid" },
+    { name:"한세인", text:"다리가 끊겼으니 경찰은 아침까지 못 온다. 그리고 범인은 — 아직 이 저택 안에 있다.", img:"study", pt:"detective" },
+    { name:"한세인", text:"단서 8개를 모두 찾고, 사람들의 증언을 들은 뒤… 추리를 시작하자.", img:"study", pt:"detective" }
+  ],
+  REVEAL: [
+    { name:"한세인", text:"범인은 당신입니다, 백강현 집사님.", pt:"detective", img:"study" },
+    { name:"백강현", text:"…….", pt:"butler", img:"study" },
+    { name:"한세인", text:"부서지지 않은 진열장, 당신 장갑의 단추, 온실로 이어진 발자국, 그리고 새벽의 찻잔 두 개. — 하지만 이건 도둑질이 아니었죠.", pt:"detective", img:"study" },
+    { name:"백강현", text:"…50년 전, 여사님은 아드님의 수술비를 위해 '푸른 달'을 파셨습니다. 그리고 그 자리에 모조품을 두셨지요. 가문의 자존심을 지키기 위해서.", pt:"butler", img:"parlor" },
+    { name:"백강현", text:"그런데 내일 감정사가 온다지 않습니까. 50년의 비밀이 한순간에 부서질 참이었습니다. 여사님은 어젯밤 저를 부르셨고… 저는 모조품을 온실 화분에 묻었습니다.", pt:"butler", img:"green" },
+    { name:"윤도진", text:"그럼… 할머니가 보석을 판 돈으로 살린 게, 우리 아버지였다는 거예요?", pt:"nephew", img:"parlor" },
+    { name:"한세인", text:"보석은 처음부터 도난당하지 않았습니다. 이 저택에서 가장 값진 것은 — 애초에 보석이 아니었으니까요.", pt:"detective", img:"ending" }
+  ],
+
+  /* ---------- 추리 문항 ---------- */
+  DEDUCE: [
+    { q:"Q1. '푸른 달'을 가져간 사람은 누구인가?",
+      opts:["집사 백강현","조카 윤도진","가정부 오말숙","골동품상 강태오"], ans:0,
+      fb:["정답. 열쇠, 단추, 발자국… 모든 단서가 그를 가리킨다.",
+          "아니다. 그의 빚은 다음 달 정리될 예정이었다 — 동기가 없다.",
+          "아니다. 그녀는 목격자일 뿐, 진열장 열쇠도 없다.",
+          "아니다. 다리가 끊긴 밤, 그는 보석을 가지고 나갈 수도 없었다."] },
+    { q:"Q2. 결정적인 근거의 조합은?",
+      opts:["열쇠로 열린 진열장 + 흰 단추 + 젖은 발자국","찻잔 두 개 + 조카의 빚","골동품상의 루페 + 감정사 소식","잠긴 뒷문 + 가족사진"], ans:0,
+      fb:["정답. 열쇠를 가진 자, 장갑의 단추, 온실을 오간 흔적 — 완벽한 연결이다.",
+          "찻잔은 '부탁'의 증거일 뿐, 범인을 특정하지 못한다.",
+          "동기의 방향은 맞지만 범행의 증거는 아니다.",
+          "그 단서들은 '내부자 소행'과 '이유'를 말해줄 뿐이다."] },
+    { q:"Q3. 사라진 보석은 지금 어디에 있는가?",
+      opts:["온실의 큰 화분 속","저택 밖 — 이미 반출됐다","금고 안","벽난로 뒤"], ans:0,
+      fb:["정답. 새로 덮인 흙이 모든 것을 말해준다.",
+          "발자국은 저택 안으로 되돌아왔다. 뒷문도 잠겨 있었다.",
+          "금고에 있던 건 보석이 아니라 오래된 계약서였다.",
+          "벽난로 위에 있던 건 1974년의 사진이다."] },
+    { q:"Q4. 집사가 보석을 숨긴 진짜 이유는?",
+      opts:["여사의 50년 비밀 — 모조품임을 감추기 위해","보석을 팔아 빚을 갚으려고","조카에게 누명을 씌우려고","골동품상을 골탕 먹이려고"], ans:0,
+      fb:["정답. 1974년의 계약서와 병원 앞 사진 — 진품은 반세기 전, 한 아이의 생명이 되었다.",
+          "그에게 빚은 없다. 30년을 저택과 함께한 사람이다.",
+          "그는 오히려 조카가 의심받지 않도록 침묵했다.",
+          "그런 가벼운 이유로 50년의 비밀을 짊어질 사람이 아니다."] }
+  ],
+
+  deduceIntro:{ name:"한세인", text:"단서는 모두 모였다. 이제 진실을 말할 시간이다. — 모두 응접실로 모여 주시죠.", pt:"detective", img:"parlor" },
+  regroup:{ name:"한세인", text:"…성급했다. 촛불을 다시 켜고, 수첩을 처음부터 훑어보자. 진실은 도망가지 않는다.", pt:"detective", img:"study" },
+  ending:{ img:"ending", title:"사건 종결 — 푸른 달의 밤",
+    text:'아침, 비가 그쳤다. 감정 의뢰는 조용히 취소되었고, 모조품 "푸른 달"은 다시 진열장으로 돌아갔다. 50년 전 보석 하나가 살린 생명과, 그것을 지켜온 두 사람의 침묵. — 청람장에서 가장 값진 것은, 처음부터 보석이 아니었다.' }
 };
 
-/* ---------- 방 ---------- */
-const ROOMS = {
-  study:{ title:"서재 — 사건 현장", img:"study", spots:[
-    { label:"텅 빈 진열장을 살펴본다", clue:"c1" },
-    { label:"카펫 주변을 조사한다", clue:"c2" } ] },
-  green:{ title:"온실", img:"green", spots:[
-    { label:"바닥의 발자국을 따라가 본다", clue:"c3" },
-    { label:"큰 화분을 살펴본다", clue:"c4" } ] },
-  kitchen:{ title:"주방", img:"kitchen", spots:[
-    { label:"쟁반 위 찻잔을 살펴본다", clue:"c5" },
-    { label:"뒷문을 확인한다", clue:"c6" } ] },
-  parlor:{ title:"응접실", img:"parlor", spots:[
-    { label:"벽난로 위 사진을 본다", clue:"c7" },
-    { label:"살짝 열린 금고를 조사한다", clue:"c8" } ] }
+/* =========================================================
+   CASE 2 — 설산의 마지막 손님
+   ========================================================= */
+const CASE2 = {
+  no:2, name:"설산의 마지막 손님", cover:"title2",
+  intro:"폭설에 갇힌 산장, 발자국 없는 눈밭, 밀실에서 사라진 노(老)작가. 이 밀실은… 처음부터 없었다.",
+  hubTitle:"산장 '갈피' — 조사 중", hubWord:"산장", backLabel:"산장으로",
+  talkBg:"lobby", rain:false,
+  needTesti:"t1", needLabel:"요리사의 목격담",
+
+  /* ---------- 단서 ---------- */
+  CLUES: {
+    c1:{ name:"얼어붙었던 문", desc:"4호실 문은 잠긴 게 아니었다. 경첩에 성에가 얼어붙어 열리지 않았을 뿐 — '밀실'은 처음부터 없었다." },
+    c2:{ name:"가지런한 이불", desc:"이불은 가지런하고, 겉옷과 지팡이가 없다. 급히 끌려간 것이 아니라 스스로 준비하고 방을 나섰다." },
+    c3:{ name:"발자국 없는 눈밭", desc:"창밖 눈밭은 완벽하게 매끈하다. 밖으로 나간 사람은 없다 — 손님은 아직 산장 안에 있다." },
+    c4:{ name:"다락의 불빛", desc:"다락 창문에 희미한 등불이 새어 나온다. '아무도 쓰지 않는다'던 그 다락이." },
+    c5:{ name:"타다 만 협박 편지", desc:"벽난로 재 속의 종잇조각. '…원고를 내놓지 않으면 세상에 알리겠다.' 누군가 태워 없애려 했다." },
+    c6:{ name:"방명록의 필체", desc:"표만석의 서명 — 꺾인 'ㅁ' 획이 협박 편지의 필체와 정확히 일치한다." },
+    c7:{ name:"새벽의 코코아 두 잔", desc:"아직 온기가 남은 머그 두 개. 새벽, 누군가 손님과 '함께' 마셨다 — 사라진 게 아니라 배웅받은 것이다." },
+    c8:{ name:"다락으로 간 쟁반", desc:"따뜻한 식사가 담겼던 쟁반이 다락 계단 아래 놓여 있다 — 누군가 식사를 올려보내고 있다." }
+  },
+  TESTI: {
+    t1:{ name:"요리사의 목격담", desc:"\"주인님이요. 코코아를 두 잔 타 가시더라고요. …한 잔은 늘 서 선생님 몫이었죠.\"" },
+    t2:{ name:"등산객이 들은 소리", desc:"\"새벽 세 시쯤? 다락 계단이 삐걱거리는 소리를 들었어요. 두 사람 발소리 같았는데.\"" },
+    t3:{ name:"브로커의 용건", desc:"\"서일홍 선생의 신작 원고 때문이오. 그 원고는 내가 계약한 거요. 받을 걸 받으러 왔을 뿐인데.\"" }
+  },
+
+  /* ---------- 방 ---------- */
+  ROOMS: {
+    room4:{ title:"4호실 — 사라진 방", img:"room4", spots:[
+      { label:"문과 경첩을 살펴본다", clue:"c1" },
+      { label:"침대와 짐을 살펴본다", clue:"c2" } ] },
+    yard:{ title:"뒷마당 — 눈밭", img:"yard", spots:[
+      { label:"눈밭을 살펴본다", clue:"c3" },
+      { label:"지붕 쪽을 올려다본다", clue:"c4" } ] },
+    lobby:{ title:"로비 — 벽난로", img:"lobby", spots:[
+      { label:"벽난로 재를 뒤진다", clue:"c5" },
+      { label:"방명록을 확인한다", clue:"c6" } ] },
+    kitchen2:{ title:"주방", img:"kitchen2", spots:[
+      { label:"식탁 위 머그잔을 본다", clue:"c7" },
+      { label:"계단 아래 쟁반을 본다", clue:"c8" } ] }
+  },
+
+  /* ---------- 인물 ---------- */
+  PEOPLE: {
+    owner:{ name:"김유원 · 산장 주인(32)", img:"owner",
+      desc:"산장 '갈피'의 주인. 침착하지만 오늘따라 눈을 마주치지 않는다.",
+      qs:[
+        { q:"어젯밤 무슨 일이 있었죠?",
+          a:"폭설 점검을 하고 일찍 잤어요. …정말이에요.", },
+        { q:"4호실 손님은 어떤 분입니까?",
+          a:"동화작가 서일홍 선생님이세요. 제가 어릴 때부터 읽고 자란… 제 은사님이기도 하고요.", },
+        { q:"다락에 식사를 올린 건 당신이죠?", need:"c8",
+          a:"…그건. (한참의 침묵) 손님이 아니라, 제 은사님이세요. 부탁이에요, 탐정님. 조금만… 조금만 모른 척해 주세요.", }
+      ]},
+    broker:{ name:"표만석 · 출판 브로커(45)", img:"broker",
+      desc:"'만석출판' 대표를 자칭하는 남자. 웃고 있지만 눈은 웃지 않는다.",
+      qs:[
+        { q:"여긴 무슨 일로 오셨죠?", testi:"t3",
+          a:"서일홍 선생의 신작 원고 때문이오. 그 원고는 내가 계약한 거요. 받을 걸 받으러 왔을 뿐인데.", },
+        { q:"이 필체, 당신 것이죠?", need:"c6",
+          a:"…방명록을 뒤졌소? (이마에 땀이 맺힌다) 그, 그건 독촉이지 협박이 아니오. 사업이란 게 원래 그런 거요.", },
+        { q:"어젯밤 알리바이는?",
+          a:"일찍 잤소. 이 눈구덩이에서 어딜 간단 말이오. (그는 4호실이 '밀실'이었다는 점을 유난히 강조한다)", }
+      ]},
+    hiker:{ name:"정산 · 등산객(24)", img:"hiker",
+      desc:"하산길이 막혀 이틀째 묵고 있는 등산객. 눈치가 빠르다.",
+      qs:[
+        { q:"밤에 뭔가 들었습니까?", testi:"t2",
+          a:"새벽 세 시쯤? 다락 계단이 삐걱거리는 소리를 들었어요. 두 사람 발소리 같았는데.", },
+        { q:"표만석이라는 사람, 어때 보였어요?",
+          a:"어제 저녁 내내 4호실 앞을 서성이던데요. 문을 두드리면서 뭐라 낮게 으르렁대는 것도 봤고요.", },
+        { q:"다락 불빛을 본 적 있나요?", need:"c4",
+          a:"그러고 보니 어젯밤부터요. 주인분은 창고라던데… 창고에 왜 밤새 불이 켜지죠?", }
+      ]},
+    cook:{ name:"방금례 · 요리사(56)", img:"cook",
+      desc:"산장의 요리사. 손이 크고 마음은 더 크다.",
+      qs:[
+        { q:"새벽에 주방에 누가 왔었나요?", need:"c7", testi:"t1",
+          a:"주인님이요. 코코아를 두 잔 타 가시더라고요. …한 잔은 늘 서 선생님 몫이었죠. 아차, 이건 비밀이었는데.", },
+        { q:"서일홍 작가는 어떤 분입니까?",
+          a:"요즘 눈이 많이 안 좋으셨어요. 원고지를 코앞까지 붙이고 쓰시더라고요. 그래도 매일 쓰셨어요. 매일.", },
+        { q:"이상한 낌새는 없었나요?",
+          a:"그 표 사장인가 하는 양반, 선생님 방 앞에서 언성을 높이는 걸 두 번이나 봤어요. 원고, 원고 하면서.", }
+      ]}
+  },
+
+  /* ---------- 프롤로그 / 진상 ---------- */
+  PROLOGUE: [
+    { name:"내레이션", text:"폭설이 사흘째 이어지는 설산. 산장 '갈피'로 오르는 길은 눈에 묻혀 사라졌다. 하산하지 못한 나, 탐정 한세인은 낯선 외침에 눈을 떴다.", img:"title2" },
+    { name:"김유원", text:"4호실 손님이… 사라지셨어요! 문은 꿈쩍도 않고, 창밖 눈밭엔 발자국 하나 없어요!", img:"room4", pt:"owner" },
+    { name:"한세인", text:"폭설로 고립된 산장, 사라진 손님, 발자국 없는 눈밭. — 두 번째 사건 파일의 시작이다.", img:"room4", pt:"detective" },
+    { name:"한세인", text:"이번에도 단서 8개와 증언이 필요하다. 서두르자, 눈보라가 그치기 전에.", img:"room4", pt:"detective" }
+  ],
+  REVEAL: [
+    { name:"한세인", text:"사라진 손님은… 처음부터 이 산장 밖으로 나가지 않았습니다.", pt:"detective", img:"lobby" },
+    { name:"한세인", text:"발자국 없는 눈밭, 얼어붙은 문, 다락의 불빛, 새벽의 코코아 두 잔. — 서일홍 선생님, 이제 내려오셔도 됩니다.", pt:"detective", img:"lobby" },
+    { name:"서일홍", text:"…들켰구나. 요즘 세상에 이렇게 눈 밝은 탐정이 다 있네. (웃으며 계단을 내려온다)", pt:"author", img:"lobby" },
+    { name:"김유원", text:"선생님은 시력을 잃어가고 계세요. 마지막 동화를 조용히 끝내고 싶어 하셨는데… 저 사람이 원고를 내놓으라며 협박했어요.", pt:"owner", img:"lobby" },
+    { name:"표만석", text:"혀, 협박이라니! 나는 정당한 계약을…! (방명록과 편지의 필체가 같다는 지적에 말문이 막힌다)", pt:"broker", img:"lobby" },
+    { name:"서일홍", text:"고맙네, 탐정. 눈이 다 감기기 전에 이 이야기만은 끝내고 싶었어. 제목은 말이야… '푸른 달'이라고 지으려던 참이라네.", pt:"author", img:"kitchen2" },
+    { name:"한세인", text:"눈보라가 그치고, 다락방의 등불은 밤새 꺼지지 않았다. — 가장 어두운 밤에도, 이야기는 계속된다.", pt:"detective", img:"ending2" }
+  ],
+
+  /* ---------- 추리 문항 ---------- */
+  DEDUCE: [
+    { q:"Q1. 사라진 서일홍 작가는 지금 어디에 있는가?",
+      opts:["눈밭을 건너 마을로 내려갔다","산장 다락방","4호실 안에 숨어 있다","표만석의 방"], ans:1,
+      fb:["발자국 없는 눈밭이 그 가능성을 지운다.",
+          "정답. 발자국 없는 눈밭, 다락의 불빛, 올려보낸 식사 — 모두 한 곳을 가리킨다.",
+          "이불은 가지런했고 겉옷과 지팡이가 없었다 — 스스로 떠난 방이다.",
+          "그의 방을 뒤질 이유가 없다. 그는 오히려 작가를 찾고 있었다."] },
+    { q:"Q2. 작가를 숨겨준 사람은 누구인가?",
+      opts:["산장 주인 김유원","요리사 방금례","등산객 정산","아무도 없다 — 혼자 숨었다"], ans:0,
+      fb:["정답. 새벽의 코코아 두 잔, 다락으로 올려진 쟁반, 그리고 은사라는 인연.",
+          "그녀는 코코아를 목격했을 뿐이다.",
+          "그는 계단 소리를 들은 목격자다.",
+          "칠순의 작가가 혼자 다락에 오르고 식사까지 해결할 수는 없다."] },
+    { q:"Q3. '밀실'의 진실은 무엇인가?",
+      opts:["안에서 잠그고 창문으로 나갔다","비밀 통로가 있다","문은 잠긴 적 없다 — 경첩이 얼어붙었을 뿐","다른 열쇠로 밖에서 잠갔다"], ans:2,
+      fb:["창밖은 발자국 없는 눈밭이다.",
+          "이 산장에 그런 것은 없다. 트릭은 훨씬 단순했다.",
+          "정답. 한파가 만든 우연의 밀실. 표만석이 유난히 '밀실'을 강조한 이유는 몰랐기 때문이다.",
+          "문은 애초에 잠기지 않았다 — 성에가 문제였을 뿐."] },
+    { q:"Q4. 작가가 스스로 숨은 이유는?",
+      opts:["밀린 숙박비 때문에","김유원과 다퉈서","눈보라가 무서워서","원고를 노린 협박을 피해 마지막 작품을 지키려고"], ans:3,
+      fb:["은사와 제자 사이에 그런 셈은 없다.",
+          "다퉜다면 코코아 두 잔이 함께 있었을 리 없다.",
+          "폭설 속에서 가장 안전한 곳은 자기 방이었을 것이다.",
+          "정답. 타다 만 협박 편지, 그리고 방명록과 일치하는 필체 — 표만석이었다."] }
+  ],
+
+  deduceIntro:{ name:"한세인", text:"단서는 모두 모였다. 이제 진실을 말할 시간이다. — 여러분, 잠시 로비로 모여 주시겠습니까.", pt:"detective", img:"lobby" },
+  regroup:{ name:"한세인", text:"…아니다. 벽난로 앞에서 코코아 한 잔. 수첩을 다시 펼치자. 눈보라는 아직 그치지 않았다.", pt:"detective", img:"lobby" },
+  ending:{ img:"ending2", title:"사건 종결 — 설산의 마지막 손님",
+    text:"눈이 그친 아침, 표만석은 첫 제설차를 타고 산을 내려갔다. 다락방의 작은 책상에서는 오늘도 원고지 넘기는 소리가 난다. 곧 세상에 나올 그 동화의 제목은 — '푸른 달'." }
 };
 
-/* ---------- 인물 ---------- */
-const PEOPLE = {
-  butler:{ name:"백강현 · 집사(67)", img:"butler",
-    desc:"30년간 청람장을 지켜온 집사. 흐트러짐 없는 몸가짐, 그러나 눈빛 어딘가가 흔들린다.",
-    qs:[
-      { q:"어젯밤 어디에 계셨습니까?",
-        a:"자정까지 서재 정리를 했습니다. 그 후에는… 제 방에 있었습니다.", },
-      { q:"장갑을 보여주시겠습니까?", need:"c2",
-        a:"…이 장갑 말입니까. (오른쪽 장갑의 단추 하나가 비어 있다) 세탁 중에 떨어진 모양입니다.", },
-      { q:"새벽에 온실에 가셨죠?", need:"t1",
-        a:"…가정부가 그러던가요. (긴 침묵) 탐정님, 어떤 진실은… 모두를 위해 어둠 속에 있어야 합니다.", }
-    ]},
-  nephew:{ name:"윤도진 · 조카(28)", img:"nephew",
-    desc:"윤 여사의 하나뿐인 손주뻘 조카. 사업 실패로 빚을 졌다는 소문이 있다.",
-    qs:[
-      { q:"보석이 사라져서 곤란하신가요?",
-        a:"곤란하죠. 할머니가 쓰러지셨으니까요. …보석 따위보다 그게 더 큰일 아닌가요.", },
-      { q:"빚 이야기를 들었습니다", testi:"t2",
-        a:"\"빚이 있는 건 사실이에요. 하지만 다음 달에 할머니가 정리해 주시기로 했어요. 제가 왜 훔치겠어요.\"", },
-      { q:"이 사진 속 아이를 아십니까?", need:"c7",
-        a:"…아버지예요. 어릴 때 큰 수술을 받으셨다고만 들었어요. 그 수술비를 할머니가 어떻게 마련했는지는… 아무도 말해주지 않았죠.", }
-    ]},
-  maid:{ name:"오말숙 · 가정부(55)", img:"maid",
-    desc:"저택의 살림을 도맡은 가정부. 정직하고 소심하다. 무언가 본 듯한 눈치다.",
-    qs:[
-      { q:"어젯밤 이상한 점은 없었나요?",
-        a:"밤새 비바람이 심해서… 온실 유리 두드리는 소리인 줄 알았는데, 지금 생각하니 발소리였을지도 몰라요.", },
-      { q:"누군가 온실에 가는 걸 보셨나요?", need:"c3", testi:"t1",
-        a:"\"새벽 2시쯤… 집사님이 온실 쪽에서 나오셨어요. 폭우도 아닌데 옷이 젖어 있었죠. 못 본 척했지만… 마음에 걸려서요.\"", },
-      { q:"윤 여사님은 어떤 분입니까?",
-        a:"50년을 모셨지만 한 번도 화내신 적 없는 분이에요. 다만… 그 보석 앞에서는 늘 슬픈 얼굴을 하셨어요. 이상하죠, 가보인데.", }
-    ]},
-  dealer:{ name:"강태오 · 골동품상(44)", img:"dealer",
-    desc:"보석 감정을 위해 저택에 초대된 골동품상. 값비싼 물건 앞에서 눈이 빛나는 남자.",
-    qs:[
-      { q:"감정사는 왜 부르자고 했습니까?", testi:"t3",
-        a:"\"감정사를 부르자고 한 건 나요. 그 보석, 진품이라면 30억은 될 테니까. …진품이라면 말이지.\"", },
-      { q:"'진품이라면'이라니, 무슨 뜻이죠?", need:"t3",
-        a:"오래 이 바닥에 있으면 감이 옵니다. 유리 너머로 봤을 때… 광채가 너무 얌전했어요. 뭐, 내일 감정하면 알게 되겠죠. (어깨를 으쓱한다)", },
-      { q:"어젯밤 알리바이가 있습니까?",
-        a:"손님방에서 잤습니다. 증인은 없지만 — 내가 훔쳤다면 이 폭풍우에 어디로 가져갑니까? 다리도 끊겼는데. (웃는다)", }
-    ]}
-};
-
-/* ---------- 프롤로그 / 진상 ---------- */
-const PROLOGUE = [
-  { name:"내레이션", text:"폭풍우가 몰아치는 밤. 낡은 양관 '청람장'의 다리가 물에 잠겨 끊겼다. 저택에 머물던 나, 탐정 한세인은 비명 같은 외침에 잠에서 깼다.", img:"title" },
-  { name:"가정부", text:"보, 보석이…! 서재의 '푸른 달'이 사라졌어요! 여사님은 충격으로 쓰러지셨고요…!", img:"study", pt:"maid" },
-  { name:"한세인", text:"다리가 끊겼으니 경찰은 아침까지 못 온다. 그리고 범인은 — 아직 이 저택 안에 있다.", img:"study", pt:"detective" },
-  { name:"한세인", text:"단서 8개를 모두 찾고, 사람들의 증언을 들은 뒤… 추리를 시작하자.", img:"study", pt:"detective" }
-];
-const REVEAL = [
-  { name:"한세인", text:"범인은 당신입니다, 백강현 집사님.", pt:"detective", img:"study" },
-  { name:"백강현", text:"…….", pt:"butler", img:"study" },
-  { name:"한세인", text:"부서지지 않은 진열장, 당신 장갑의 단추, 온실로 이어진 발자국, 그리고 새벽의 찻잔 두 개. — 하지만 이건 도둑질이 아니었죠.", pt:"detective", img:"study" },
-  { name:"백강현", text:"…50년 전, 여사님은 아드님의 수술비를 위해 '푸른 달'을 파셨습니다. 그리고 그 자리에 모조품을 두셨지요. 가문의 자존심을 지키기 위해서.", pt:"butler", img:"parlor" },
-  { name:"백강현", text:"그런데 내일 감정사가 온다지 않습니까. 50년의 비밀이 한순간에 부서질 참이었습니다. 여사님은 어젯밤 저를 부르셨고… 저는 모조품을 온실 화분에 묻었습니다.", pt:"butler", img:"green" },
-  { name:"윤도진", text:"그럼… 할머니가 보석을 판 돈으로 살린 게, 우리 아버지였다는 거예요?", pt:"nephew", img:"parlor" },
-  { name:"한세인", text:"보석은 처음부터 도난당하지 않았습니다. 이 저택에서 가장 값진 것은 — 애초에 보석이 아니었으니까요.", pt:"detective", img:"ending" }
-];
-
-/* ---------- 추리 문항 ---------- */
-const DEDUCE = [
-  { q:"Q1. '푸른 달'을 가져간 사람은 누구인가?",
-    opts:["집사 백강현","조카 윤도진","가정부 오말숙","골동품상 강태오"], ans:0,
-    fb:["정답. 열쇠, 단추, 발자국… 모든 단서가 그를 가리킨다.",
-        "아니다. 그의 빚은 다음 달 정리될 예정이었다 — 동기가 없다.",
-        "아니다. 그녀는 목격자일 뿐, 진열장 열쇠도 없다.",
-        "아니다. 다리가 끊긴 밤, 그는 보석을 가지고 나갈 수도 없었다."] },
-  { q:"Q2. 결정적인 근거의 조합은?",
-    opts:["열쇠로 열린 진열장 + 흰 단추 + 젖은 발자국","찻잔 두 개 + 조카의 빚","골동품상의 루페 + 감정사 소식","잠긴 뒷문 + 가족사진"], ans:0,
-    fb:["정답. 열쇠를 가진 자, 장갑의 단추, 온실을 오간 흔적 — 완벽한 연결이다.",
-        "찻잔은 '부탁'의 증거일 뿐, 범인을 특정하지 못한다.",
-        "동기의 방향은 맞지만 범행의 증거는 아니다.",
-        "그 단서들은 '내부자 소행'과 '이유'를 말해줄 뿐이다."] },
-  { q:"Q3. 사라진 보석은 지금 어디에 있는가?",
-    opts:["온실의 큰 화분 속","저택 밖 — 이미 반출됐다","금고 안","벽난로 뒤"], ans:0,
-    fb:["정답. 새로 덮인 흙이 모든 것을 말해준다.",
-        "발자국은 저택 안으로 되돌아왔다. 뒷문도 잠겨 있었다.",
-        "금고에 있던 건 보석이 아니라 오래된 계약서였다.",
-        "벽난로 위에 있던 건 1974년의 사진이다."] },
-  { q:"Q4. 집사가 보석을 숨긴 진짜 이유는?",
-    opts:["여사의 50년 비밀 — 모조품임을 감추기 위해","보석을 팔아 빚을 갚으려고","조카에게 누명을 씌우려고","골동품상을 골탕 먹이려고"], ans:0,
-    fb:["정답. 1974년의 계약서와 병원 앞 사진 — 진품은 반세기 전, 한 아이의 생명이 되었다.",
-        "그에게 빚은 없다. 30년을 저택과 함께한 사람이다.",
-        "그는 오히려 조카가 의심받지 않도록 침묵했다.",
-        "그런 가벼운 이유로 50년의 비밀을 짊어질 사람이 아니다."] }
-];
+/* 사건 목록 — 로비가 이 순서대로 카드를 만든다. */
+const CASES = { case1:CASE1, case2:CASE2 };
 
 /* ---------- 게임 상태 ---------- */
 const G = {
-  clues:new Set(), testis:new Set(), hearts:3, wrong:0,
+  // C = 현재 선택된 사건 데이터. 아래 로직은 전역 시나리오 상수를 일절 참조하지 않는다.
+  C:null, caseKey:null,
+  clues:new Set(), testis:new Set(), asked:new Set(), hearts:3, wrong:0,
   dlgQueue:[], dlgIdx:0, dlgDone:null, deduceIdx:0, currentRoom:null,
 
   $(id){ return document.getElementById(id); },
@@ -842,6 +1071,7 @@ const G = {
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     this.$(id).classList.add('active');
     if(id==='scr-hub') this.renderHub();
+    if(id==='scr-lobby') this.renderLobby();
   },
   toast(t,ms=2200){
     // innerHTML: 토스트에 아이콘 SVG를 실어야 한다. 시나리오 데이터에 < > & 가 없음을 확인함.
@@ -859,7 +1089,7 @@ const G = {
   },
   // 남은 목숨은 불 켜진 촛불, 잃은 목숨은 연기만 나는 꺼진 촛불
   candlesHTML(){ return ICON.candle.repeat(this.hearts)+ICON.candleOut.repeat(3-this.hearts); },
-  progHTML(){ return '<span class="prog-n">추리 '+(this.deduceIdx+1)+' / '+DEDUCE.length+'</span>'
+  progHTML(){ return '<span class="prog-n">추리 '+(this.deduceIdx+1)+' / '+this.C.DEDUCE.length+'</span>'
     +'<span class="prog-sep">◆</span><span class="prog-candles">'+this.candlesHTML()+'</span>'; },
 
   /* ----- 대화 시스템 ----- */
@@ -892,7 +1122,43 @@ const G = {
     else this.renderLine();
   },
 
-  startPrologue(){ SND.rain(); this.playDialog(PROLOGUE, ()=>this.show('scr-hub')); },
+  /* ----- 로비(사건 선택) ----- */
+  renderLobby(){
+    const grid=this.$('caseGrid'); grid.innerHTML='';
+    for(const key in CASES){
+      const c=CASES[key];
+      const card=document.createElement('div'); card.className='case-card';
+      // 이미지가 없어도(오프라인) 정보부와 클릭은 그대로 살아 있다.
+      card.innerHTML='<img data-k="'+c.cover+'" src="'+IMG[c.cover]+'" alt="">'+
+        '<div class="case-info">'+
+          '<div class="case-no">CASE FILE #'+c.no+'</div>'+
+          '<div class="case-name">「'+c.name+'」</div>'+
+          '<div class="case-desc">'+c.intro+'</div>'+
+        '</div>';
+      card.onclick=()=>this.startCase(key);
+      grid.appendChild(card);
+    }
+  },
+  backToLobby(){
+    this.closeNotebook();
+    this.$('talkAnswer').style.display='none';
+    this.show('scr-lobby');
+  },
+  // 사건 진입점. 진행 상태를 전부 초기화하므로 로비를 오가도 이전 사건이 남지 않는다.
+  startCase(key){
+    this.caseKey=key; this.C=CASES[key];
+    this.clues=new Set(); this.testis=new Set(); this.asked=new Set();
+    this.hearts=3; this.wrong=0; this.deduceIdx=0; this.currentRoom=null;
+    this.closeNotebook();
+    this.$('talkAnswer').style.display='none';
+    this.$('hubTitle').textContent=this.C.hubTitle;
+    this.$('roomBack').textContent=this.C.backLabel;
+    this.$('talkBack').textContent=this.C.backLabel;
+    this.$('clueTot').textContent='/'+Object.keys(this.C.CLUES).length;
+    this.$('testiTot').textContent='/'+Object.keys(this.C.TESTI).length;
+    SND.setRain(this.C.rain);
+    this.playDialog(this.C.PROLOGUE, ()=>this.show('scr-hub'));
+  },
 
   /* ----- 허브 ----- */
   renderHub(){
@@ -900,8 +1166,8 @@ const G = {
     this.$('testiN').textContent=this.testis.size;
     this.$('hearts').innerHTML=this.candlesHTML();
     const grid=this.$('hubGrid'); grid.innerHTML='';
-    for(const key in ROOMS){
-      const r=ROOMS[key];
+    for(const key in this.C.ROOMS){
+      const r=this.C.ROOMS[key];
       const found=r.spots.filter(s=>this.clues.has(s.clue)).length;
       const card=document.createElement('div'); card.className='room-card';
       card.innerHTML='<img data-k="'+r.img+'" src="'+IMG[r.img]+'">'+
@@ -909,14 +1175,16 @@ const G = {
       card.onclick=()=>this.openRoom(key);
       grid.appendChild(card);
     }
-    const ready=this.clues.size>=8 && this.testis.has('t1');
+    const total=Object.keys(this.C.CLUES).length;
+    const ready=this.clues.size>=total && this.testis.has(this.C.needTesti);
     this.$('deduceBtn').disabled=!ready;
     this.$('deduceBtn').innerHTML = ICON.scales + '<span>'
-      + (ready ? '추리 시작 — 준비 완료!' : '추리 시작 (단서 8개 + 가정부의 목격담 필요)') + '</span>';
+      + (ready ? '추리 시작 — 준비 완료!'
+               : '추리 시작 (단서 '+total+'개 + '+this.C.needLabel+' 필요)') + '</span>';
   },
 
   openRoom(key){
-    this.currentRoom=key; const r=ROOMS[key];
+    this.currentRoom=key; const r=this.C.ROOMS[key];
     this.$('roomTitle').textContent=r.title;
     this.setImg('roomBg', r.img);
     const sp=this.$('spots'); sp.innerHTML='';
@@ -925,7 +1193,7 @@ const G = {
       b.className='spot-btn'+(this.clues.has(s.clue)?' done':'');
       b.innerHTML=ICON.mag+'<span>'+s.label+'</span>';
       b.onclick=()=>{
-        const c=CLUES[s.clue];
+        const c=this.C.CLUES[s.clue];
         if(!this.clues.has(s.clue)){
           this.clues.add(s.clue);
           SND.ding();
@@ -943,8 +1211,8 @@ const G = {
   openTalkMenu(){
     // 허브 그리드를 인물 카드로 바꿔 심문 대상을 고른다 (renderHub가 방 카드로 되돌린다)
     const grid=this.$('hubGrid'); grid.innerHTML='';
-    for(const key in PEOPLE){
-      const p=PEOPLE[key];
+    for(const key in this.C.PEOPLE){
+      const p=this.C.PEOPLE[key];
       // person 클래스는 표현 전용 — 인물 카드는 얼굴만 확대되지 않게 별도 크롭 규칙을 쓴다
       const card=document.createElement('div'); card.className='room-card person';
       card.innerHTML='<img data-k="'+p.img+'" src="'+IMG[p.img]+'">'+
@@ -953,31 +1221,34 @@ const G = {
       grid.appendChild(card);
     }
     this.$('deduceBtn').disabled=true;
-    this.toast('심문할 인물을 선택하세요 (수첩·추리는 저택 화면에서)', 2600);
+    this.toast('심문할 인물을 선택하세요 (수첩·추리는 '+this.C.hubWord+' 화면에서)', 2600);
   },
   openTalk(key){
-    const p=PEOPLE[key];
+    const p=this.C.PEOPLE[key];
     this.$('talkName').textContent=p.name;
     this.$('talkDesc').textContent=p.desc;
     this.setImg('talkPortrait', p.img);
-    this.setImg('talkBg','parlor');
+    this.setImg('talkBg', this.C.talkBg);
     const box=this.$('talkQs'); box.innerHTML='';
     p.qs.forEach((qa,i)=>{
       const locked=qa.need && !(this.clues.has(qa.need)||this.testis.has(qa.need));
+      // "이미 물어봤다"는 표시는 사건 데이터가 아니라 진행 상태에 둔다.
+      // 데이터 객체에 쓰면 로비를 거쳐 다시 시작해도 체크가 남는다.
+      const akey=key+'#'+i;
       const b=document.createElement('button');
-      b.className='q-btn'+(locked?' locked':'')+(qa._asked?' asked':'');
+      b.className='q-btn'+(locked?' locked':'')+(this.asked.has(akey)?' asked':'');
       b.style.width='100%'; b.style.marginBottom='8px';
       b.innerHTML=(locked?ICON.lock:ICON.talk)+'<span>'+qa.q+(locked?' (관련 단서 필요)':'')+'</span>';
       b.onclick=()=>{
         if(locked){ this.toast('이 질문을 하려면 관련 단서나 증언이 먼저 필요하다.'); return; }
-        qa._asked=true;
+        this.asked.add(akey);
         this.$('ansName').textContent=p.name;
         this.$('ansText').textContent=qa.a;
         this.$('talkAnswer').style.display='block';
         if(qa.testi && !this.testis.has(qa.testi)){
           this.testis.add(qa.testi);
           SND.ding();
-          this.toast(ICON.talk+'<span>증언 확보 — '+TESTI[qa.testi].name+'</span>');
+          this.toast(ICON.talk+'<span>증언 확보 — '+this.C.TESTI[qa.testi].name+'</span>');
         }
         this.openTalk(key);
       };
@@ -992,11 +1263,11 @@ const G = {
     if(this.clues.size===0 && this.testis.size===0)
       list.innerHTML='<div class="clue-item">아직 모은 단서가 없다. 방을 조사해 보자.</div>';
     this.clues.forEach(id=>{
-      const c=CLUES[id];
+      const c=this.C.CLUES[id];
       list.innerHTML+='<div class="clue-item"><b>'+ICON.mag+'<span>'+c.name+'</span></b><br>'+c.desc+'</div>';
     });
     this.testis.forEach(id=>{
-      const t=TESTI[id];
+      const t=this.C.TESTI[id];
       list.innerHTML+='<div class="clue-item testi"><b>'+ICON.talk+'<span>'+t.name+'</span></b><br>'+t.desc+'</div>';
     });
     this.$('notebook').style.display='flex';
@@ -1005,14 +1276,13 @@ const G = {
 
   /* ----- 추리 ----- */
   tryDeduce(){
-    if(this.clues.size<8 || !this.testis.has('t1')) return;
+    if(this.clues.size<Object.keys(this.C.CLUES).length || !this.testis.has(this.C.needTesti)) return;
     this.deduceIdx=0;
-    this.playDialog([
-      {name:'한세인', text:'단서는 모두 모였다. 이제 진실을 말할 시간이다. — 모두 응접실로 모여 주시죠.', pt:'detective', img:'parlor'}
-    ], ()=>{ this.show('scr-deduce'); this.renderDeduce(); });
+    this.playDialog([this.C.deduceIntro],
+      ()=>{ this.show('scr-deduce'); this.renderDeduce(); });
   },
   renderDeduce(){
-    const d=DEDUCE[this.deduceIdx];
+    const d=this.C.DEDUCE[this.deduceIdx];
     this.$('deduceProg').innerHTML=this.progHTML();
     this.$('deduceQ').textContent=d.q;
     this.$('deduceFb').textContent='';
@@ -1024,7 +1294,7 @@ const G = {
     });
   },
   answer(i,btn){
-    const d=DEDUCE[this.deduceIdx];
+    const d=this.C.DEDUCE[this.deduceIdx];
     const fb=this.$('deduceFb');
     if(i===d.ans){
       SND.good(); flashGold();
@@ -1033,7 +1303,7 @@ const G = {
       document.querySelectorAll('.d-btn').forEach(b=>b.disabled=true);
       setTimeout(()=>{
         this.deduceIdx++;
-        if(this.deduceIdx>=DEDUCE.length) this.playDialog(REVEAL, ()=>this.ending());
+        if(this.deduceIdx>=this.C.DEDUCE.length) this.playDialog(this.C.REVEAL, ()=>this.ending());
         else this.renderDeduce();
       }, 1600);
     } else {
@@ -1043,9 +1313,8 @@ const G = {
       fb.innerHTML='<span class="fb-x">'+ICON.cross+'</span><span>'+d.fb[i]+'</span>';
       if(this.hearts<=0){
         this.hearts=3;
-        this.playDialog([
-          {name:'한세인', text:'…성급했다. 촛불을 다시 켜고, 수첩을 처음부터 훑어보자. 진실은 도망가지 않는다.', pt:'detective', img:'study'}
-        ], ()=>{ this.show('scr-deduce'); this.renderDeduce(); });
+        this.playDialog([this.C.regroup],
+          ()=>{ this.show('scr-deduce'); this.renderDeduce(); });
       } else {
         this.$('deduceProg').innerHTML=this.progHTML();
       }
@@ -1054,10 +1323,11 @@ const G = {
 
   /* ----- 엔딩 ----- */
   ending(){
-    this.setImg('endImg','ending');
+    const e=this.C.ending;
+    this.setImg('endImg', e.img);
     const grade=this.wrong===0?'S — 완벽한 추리':this.wrong<=2?'A — 훌륭한 추리':'B — 진실에 도달';
-    this.$('endTitle').textContent='사건 종결 — 푸른 달의 밤';
-    this.$('endText').textContent='아침, 비가 그쳤다. 감정 의뢰는 조용히 취소되었고, 모조품 "푸른 달"은 다시 진열장으로 돌아갔다. 50년 전 보석 하나가 살린 생명과, 그것을 지켜온 두 사람의 침묵. — 청람장에서 가장 값진 것은, 처음부터 보석이 아니었다.';
+    this.$('endTitle').textContent=e.title;
+    this.$('endText').textContent=e.text;
     // 인장(::before)이 읽을 등급 글자. 아래 표시 텍스트는 한 글자도 바꾸지 않는다.
     this.$('endGrade').dataset.grade = this.wrong===0?'S':this.wrong<=2?'A':'B';
     this.$('endGrade').textContent='최종 등급: '+grade+'  ·  오답 '+this.wrong+'회';
