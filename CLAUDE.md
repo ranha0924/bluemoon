@@ -74,10 +74,11 @@ UI를 수정했다면 최소한 아래를 확인한다.
    눈으로 보고 넘기지 말고 좌표를 계산해서 검사한다.
 
 `.screen`은 `display:none`으로 숨기기만 하고 DOM에서 제거하지 않는다. 그래서 **모든 화면의
-버튼이 항상 동시에 존재한다.** `class="btn"`은 6개 컨테이너(`scr-title` / `scr-hub`×4 /
-`scr-room` / `scr-talk` / `scr-end` / `#notebook`)에 9개가 깔려 있고, 뒤로가기 버튼의
-텍스트(사건별 `backLabel` — `"캠핑장으로"` / `"펜션으로"`)도 `scr-room`과 `scr-talk`
-두 곳에 동시에 걸린다. 반드시 `#scr-room .btn`처럼 화면 단위로 범위를 좁혀서 잡는다.
+버튼이 항상 동시에 존재한다.** `class="btn"`은 8개 컨테이너(`scr-title` / `scr-lobby` /
+`scr-hub`×4 / `scr-room` / `scr-talk` / `scr-end`×2 / `scr-inspect` / `#notebook`)에
+12개가 깔려 있고, 뒤로가기 버튼의 텍스트(사건별 `backLabel` — `"캠핑장으로"` / `"펜션으로"`)도
+`scr-room`과 `scr-talk` 두 곳에 동시에 걸린다. `scr-inspect`의 `"돌아가기"`는 backLabel
+치환을 받지 않는 정적 텍스트다. 반드시 `#scr-room .btn`처럼 화면 단위로 범위를 좁혀서 잡는다.
 
 `.spot-btn`(`#spots`)과 `.q-btn`(`#talkQs`)은 각각 한 화면에만 생성되므로 이 문제가 없다.
 

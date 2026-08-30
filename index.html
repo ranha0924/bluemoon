@@ -135,7 +135,8 @@
     -webkit-background-clip:text; background-clip:text; color:transparent;
     filter:drop-shadow(0 0 18px rgba(140,180,255,.32)) drop-shadow(0 3px 8px #000); }
   .title-inner h2 { font-family:var(--ff-body); font-weight:400; color:#b3a894;
-    letter-spacing:.5em; font-size:.72rem; padding-left:.5em; }
+    letter-spacing:.5em; font-size:.72rem; padding-left:.5em;
+    text-shadow:0 2px 8px rgba(0,0,0,.75); }
   .title-bottom { margin-top:auto; margin-bottom:6%; display:flex; flex-direction:column;
     align-items:center; gap:10px; }
   .ver { position:absolute; right:16px; bottom:12px; z-index:3;
@@ -372,7 +373,11 @@
   #deduceProg .prog-candles .ico { width:12px; height:12px; }
 
   /* ---------- 수첩 ---------- */
-  #notebook { position:absolute; inset:6% 10%; z-index:20; background:var(--leather);
+  /* 수첩 백드롭 — 아래 화면의 노출된 여백(방 카드 가장자리·하단 버튼)이 클릭되는 것을 막고,
+     누르면 수첩이 닫힌다. z-index 19 = 수첩(20) 바로 아래, 화면 내용 위. */
+  #nbVeil { position:absolute; inset:0; z-index:19; display:none; background:rgba(6,4,2,.45); }
+  /* top 14% — 토스트 밴드(y 38..85)가 수첩 제목을 덮지 않도록 그 아래에서 시작한다. */
+  #notebook { position:absolute; inset:14% 10% 6%; z-index:20; background:var(--leather);
     border:1px solid var(--gold-soft); outline:1px solid var(--gold-dim); outline-offset:3px;
     border-radius:4px; padding:18px 20px; display:none;
     flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.8),
@@ -512,7 +517,7 @@
       </div>
       <div class="title-bottom">
         <button class="btn gold" style="font-size:1.1rem; padding:14px 46px" onclick="G.show('scr-lobby')">사건 파일 열기</button>
-        <div style="color:#a99f8a; font-size:.82rem">두 건의 가스사고 파일이 조사관을 기다리고 있다</div>
+        <div style="color:#a99f8a; font-size:.82rem">두 건의 가스사고 파일이 탐정을 기다리고 있다</div>
         <div style="color:#7e7462; font-size:.66rem; letter-spacing:.08em">실제 가스안전 수칙과 통계를 바탕으로 제작되었습니다</div>
       </div>
       <div class="ver">ver 4.0</div>
@@ -628,6 +633,7 @@
   </div>
 
   <!-- 수첩 -->
+  <div id="nbVeil" onclick="G.closeNotebook()"></div>
   <div id="notebook">
     <h3><i data-ico="book"></i>조사 수첩</h3>
     <div id="clueList"></div>
@@ -663,7 +669,7 @@ const CDN = {
   boss:      "hf_20260830_073617_b1add7f9-16a8-4cb9-9c87-09633adcf816.png",
   parttime:  "hf_20260830_073619_e1d8eb9e-8393-4f46-ba37-43a55f4158a9.png",
   camper:    "hf_20260830_073620_0ee4bf68-732e-444e-a906-5f1ef47f5cd6.png",
-  daughter:  "hf_20260830_073621_7adf5b2d-896b-4e54-915e-142cd9fe2149.png",
+  daughter:  "hf_20260830_085131_29e90971-096c-43c5-b5a2-8715d475b0a0.png",
   // ----- CASE 2 — 보이지 않는 손님 (배경 6장 + 인물 5장) -----
   cover2:    "hf_20260830_072804_41e436b8-a2fe-4427-9357-e0b1a9cbad4e.png",
   boilerroom:"hf_20260830_072804_e65205a5-0461-4c88-a0b6-9e7bcec8b131.png",
@@ -827,11 +833,11 @@ const CASE1 = {
   /* ---------- 단서 ---------- */
   CLUES: {
     c1:{ name:"파열된 부탄캔", desc:"옆구리가 찢긴 채 나뒹구는 캔. 터지기 직전의 캔은 부풀어 오르며 쉭쉭 소리를 낸다. 파열방지기능 제품이었다면 찢김 대신 가스 배출로 끝났을 것이다." },
-    c2:{ name:"삼발이보다 큰 불판", desc:"레인지의 삼발이를 완전히 덮는 대형 불판. 복사열이 고스란히 아래 부탄캔을 데워 내부 압력을 키운다 — 부탄캔 파열 사고의 가장 흔한 원인이다." },
+    c2:{ name:"삼발이보다 큰 불판", desc:"레인지의 삼발이를 완전히 덮는 대형 불판. 복사열이 고스란히 아래 부탄캔을 데워 내부 압력을 키운다 — 부탄캔 5대 금지의 첫 번째 항목이다." },
     c3:{ name:"포일 감은 석쇠", desc:"알루미늄 포일로 꽁꽁 감싼 석쇠. 빠져나가야 할 열이 갇혀 캔 쪽으로 쏠린다. 포일 감은 석쇠·불판 사용은 부탄캔 5대 금지 수칙 중 하나다." },
     c4:{ name:"나란히 붙인 레인지", desc:"휴대용 레인지 2대가 딱 붙어 있다. 옆 화구의 열이 서로의 캔을 데운다 — 여러 대를 붙여 쓰는 병렬 배치도, 위아래로 쌓는 이단 적재도 금지다." },
     c5:{ name:"숯불 곁의 예비 캔", desc:"이글거리는 화로 바로 옆에 부탄캔들이 줄지어 서 있다. 쪽지엔 '찬 캔은 불 옆에서 데우면 잘 나옴'. 화기 근처 방치도, 직접 가열도 절대 금지다." },
-    c6:{ name:"분리 안 된 폐캔", desc:"다 쓴 캔이 레인지에 꽂힌 채 버려져 있다. 사용 후엔 반드시 연소기에서 분리해 서늘한 곳에 — 폐기는 야외에서 바람을 등지고 잔가스를 뺀 뒤에 한다." },
+    c6:{ name:"함부로 버려진 폐캔", desc:"캡도 씌우지 않은 폐캔들이 화로 곁에 나뒹군다. 다 쓴 캔은 연소기에서 분리해 캡을 씌워 서늘한 곳에 — 폐기는 야외에서 바람을 등지고 잔가스를 뺀 뒤에 한다." },
     c7:{ name:"볕에 달궈진 재고", desc:"매점 창가, 한여름 직사광선에 달궈진 부탄캔 박스. 제조일이 3년을 넘겼다 — 부탄캔 권장사용기간은 제조일로부터 3년이다." },
     c8:{ name:"트럭 짐칸의 온도계", desc:"재고를 실어 나르던 트럭 짐칸의 온도계가 60℃ 를 가리킨다. 여름철 차량 내부는 트렁크까지 60℃ 를 넘본다 — 부탄캔 보관은 40℃ 미만 장소가 원칙이다." }
   },
@@ -925,7 +931,7 @@ const CASE1 = {
       opts:["불량 캔이 저절로 터졌다","알바생이 캔을 잘못 끼웠다","삼발이보다 큰 불판의 복사열","숯불의 불똥이 튀었다"], ans:2,
       fb:["아니다. 캔은 터질 조건이 갖춰져야 터진다 — 원인은 사용 환경에 있었다.",
           "캔은 정상 체결돼 있었다. 그는 오히려 부푼 캔을 빼려던 사람이다.",
-          "정답. 삼발이를 덮는 큰 불판은 복사열을 캔에 쏟아 내부 압력을 키운다 — 5대 금지 1호다.",
+          "정답. 삼발이를 덮는 큰 불판은 복사열을 캔에 쏟아 내부 압력을 키운다 — 5대 금지의 첫 번째 항목이다.",
           "화로는 멀리 있었다. 불똥이 아니라 '열'이 범인이다."] },
     { q:"Q2. 그 캔이 유독 위험했던 이유는?",
       opts:["제조 3년 경과에 여름 트럭 보관","수입산 캔이라서","용량이 작은 캔이라서","알바생이 캔을 흔들어서"], ans:0,
@@ -935,13 +941,13 @@ const CASE1 = {
           "흔들림은 파열 원인이 아니다. 부푼 캔을 발견해 교체하려던 행동은 옳았다."] },
     { q:"Q3. 한여름 씨가 범인이 아닌 결정적 근거는?",
       opts:["평소 성실하다는 평판","사장의 친척이라서","현장에 없었다는 알리바이","부푼 캔을 교체하려다 제지당했다"], ans:3,
-      fb:["심증일 뿐이다. 조사관은 증거로 말한다.",
+      fb:["심증일 뿐이다. 탐정은 증거로 말한다.",
           "혈연은 증거가 아니다. 애초에 친척도 아니다.",
           "그는 현장에 있었다 — 있었기에 이상 징후를 본 것이다.",
           "정답. 전조를 알아채고 새 캔으로 바꾸려던 사람이 사고를 만들 리 없다 — 초롱과 본인의 증언이 겹친다."] },
     { q:"Q4. 인명피해를 막은 결정적 행동은?",
       opts:["물을 뿌려 캔을 식혔다","전조를 알아채고 즉시 대피시켰다","캔을 집어 멀리 던졌다","불판을 맨손으로 치웠다"], ans:1,
-      fb:["달궈진 캔에 찬물은 급격한 온도차로 오히려 위험할 수 있다. 최선은 거리 확보다.",
+      fb:["이미 부풀어 오른 캔 곁에 다가가는 것부터가 위험하다. 최선은 즉시 거리를 확보하는 것이다.",
           "정답. 부풂과 쉭쉭 소리 — 파열 전조를 배운 대로 알아채고 '모두 물러나요!'를 외쳤다.",
           "부푼 캔을 만지는 것 자체가 위험천만이다. 사람이 물러나는 게 먼저다.",
           "맨손으로 만졌다면 화상 피해자가 한 명 늘었을 것이다."] }
@@ -975,10 +981,10 @@ const CASE2 = {
     c1:{ name:"이탈된 배기통", desc:"보일러 배기통 연결부가 빠져 틈이 벌어져 있다. 최근 5년 보일러 사고 26건 중 9건이 배기통 연결부 이탈 — 사망률은 다른 가스사고의 5.8배다." },
     c2:{ name:"찌그러진 연통", desc:"지붕에서 떨어진 눈덩이에 연통 끝이 눌려 있다. 배기통 점검 3종 — 이탈·찌그러짐·이물질 — 폭설 뒤엔 반드시 연통부터 살펴야 한다." },
     c3:{ name:"연통 속 새 둥지", desc:"연통 안에 마른 나뭇가지가 가득하다. 막힌 연통은 배기가스를 실내로 되돌린다 — 점검 3종의 마지막, 내부 이물질이다." },
-    c4:{ name:"침묵한 CO경보기", desc:"천장 구석의 일산화탄소 경보기. 2020년 8월부터 신규 보일러 시설에 설치 의무, 천장형은 벽에서 30cm 떼어 단다. — 그런데 왜 울리지 않았을까." },
+    c4:{ name:"침묵한 CO경보기", desc:"천장 바로 아래 벽에 달린 일산화탄소 경보기. 2020년 8월부터 신규 보일러 시설에 설치 의무 — 벽에 달 때는 천장에서 15cm, 천장에 달 때는 벽에서 30cm 띄운다. 그런데 왜 울리지 않았을까." },
     c5:{ name:"황색 불꽃", desc:"레인지 불꽃이 노랗게 흔들린다. 파란 불꽃이 정상 — 황색·적색 불꽃은 불완전연소, 곧 일산화탄소가 만들어지고 있다는 신호다." },
     c6:{ name:"결로 낀 닫힌 창", desc:"한파에 창을 꼭 닫은 채 밤을 났다 — 유리에 결로가 가득하다. 겨울에도 최소 2시간마다 환기가 원칙이다. 밀폐는 중독의 공범이다." },
-    c7:{ name:"보류된 점검 신청서", desc:"'배기통 노후 — 교체 요망'이라 적힌 관리인의 신청서. 결재란엔 '내년 예산에서'라는 메모뿐이다. 가스보일러는 1년 1회 이상 전문가 점검이 원칙이다." },
+    c7:{ name:"보류된 점검 신청서", desc:"찬장 서랍 깊숙이 치워져 있던 관리인의 신청서 — '배기통 노후, 교체 요망'. 결재란엔 '내년 예산에서'라는 메모뿐이다. 가스보일러는 1년 1회 이상 전문가 점검이 원칙이다." },
     c8:{ name:"낡은 보일러 명판", desc:"명판의 설치 연도는 12년 전. 보일러 권장사용기간은 10년이다 — 수명을 넘긴 기계일수록 해마다 점검이 절실하다." }
   },
   TESTI: {
@@ -996,18 +1002,18 @@ const CASE2 = {
       { label:"연통 끝을 살펴본다", clue:"c2" },
       { label:"연통 안쪽을 들여다본다", clue:"c3" } ] },
     guestroom:{ title:"205호 객실", img:"guestroom", spots:[
-      { label:"천장의 경보기를 올려다본다", clue:"c4" },
+      { label:"벽 위쪽의 경보기를 살펴본다", clue:"c4" },
       { label:"창문을 살펴본다", clue:"c6" },
       { label:"경보기를 떼어 뒤집어 본다", inspect:"alarm", needs:"c4" } ] },
     kitchen3:{ title:"주방", img:"kitchen3", spots:[
       { label:"레인지 불꽃을 살펴본다", clue:"c5" },
-      { label:"게시판의 신청서를 본다", clue:"c7" } ] }
+      { label:"찬장 서랍의 신청서를 본다", clue:"c7" } ] }
   },
 
   /* ---------- 인물 ---------- */
   PEOPLE: {
     host:{ name:"방한욱 · 펜션 사장(58)", img:"host",
-      desc:"펜션 '설래원'의 사장. 손님 앞에선 웃지만, 조사관과는 눈을 맞추지 못한다.",
+      desc:"펜션 '설래원'의 사장. 손님 앞에선 웃지만, 탐정과는 눈을 맞추지 못한다.",
       qs:[
         { q:"어젯밤 상황을 설명해 주시죠",
           a:"새벽에 관리인이 문이란 문을 다 두드리며 깨웠습니다. 손님들이 어지럽다고 해서 창을 열고 눈밭으로 모셨죠. 가스 냄새는 전혀 없었는데, 대체 뭐가 문제랍니까?" },
@@ -1051,7 +1057,7 @@ const CASE2 = {
   /* ---------- 프롤로그 / 진상 ---------- */
   PROLOGUE: [
     { name:"내레이션", text:"폭설이 이틀째 이어진 밤, 언덕 위 펜션 '설래원'. 새벽, 투숙객들이 두통과 어지럼을 호소하며 눈밭으로 뛰쳐나왔다. 가스 냄새는 — 없었다.", img:"cover2" },
-    { name:"방한욱", text:"조사관님, 와 주셔서 감사합니다. 냄새도 없고 경보기도 조용했는데 다들 쓰러질 뻔했어요. 귀신이 곡할 노릇 아닙니까.", img:"cover2", pt:"host" },
+    { name:"방한욱", text:"탐정님, 이 눈길에 와 주셔서 감사합니다. 냄새도 없고 경보기도 조용했는데 다들 쓰러질 뻔했어요. 귀신이 곡할 노릇 아닙니까.", img:"cover2", pt:"host" },
     { name:"한세인", text:"냄새 없이 사람을 쓰러뜨리는 손님이 하나 있지. 무색, 무취 — 아무도 초대한 적 없는 다섯 번째 손님.", img:"guestroom", pt:"detective" },
     { name:"한세인", text:"단서 8개와 증언이 필요하다. 그 손님이 어디로 들어왔는지, 왜 아무도 몰랐는지 밝혀내자.", img:"guestroom", pt:"detective" }
   ],
@@ -1425,6 +1431,7 @@ const G = {
 
   /* ----- 허브 ----- */
   renderHub(){
+    this._talkMenu=false;
     this.$('clueN').textContent=this.clues.size;
     this.$('testiN').textContent=this.testis.size;
     this.$('hearts').innerHTML=this.candlesHTML();
@@ -1434,7 +1441,7 @@ const G = {
       const clueSpots=r.spots.filter(s=>s.clue);   // 조사 전용 지점은 단서 수에서 제외
       const found=clueSpots.filter(s=>this.clues.has(s.clue)).length;
       const card=document.createElement('div'); card.className='room-card';
-      card.innerHTML='<img data-k="'+r.img+'" src="'+IMG[r.img]+'">'+
+      card.innerHTML='<img data-k="'+r.img+'" src="'+IMG[r.img]+'" alt="">'+
         '<div class="room-label"><span>'+r.title+'</span><small>단서 '+found+'/'+clueSpots.length+'</small></div>';
       card.onclick=()=>this.openRoom(key);
       grid.appendChild(card);
@@ -1460,7 +1467,10 @@ const G = {
         b.innerHTML=(locked?ICON.lock:ICON.folder)+'<span>'+s.label+'</span>';
         b.onclick=()=>{
           if(locked){
-            this.toast(ICON.lock+'<span>먼저 '+this.C.CLUES[s.needs].name+'를 찾아야 한다.</span>');
+            // 받침 유무에 따라 을/를 선택 (단서명이 데이터라 조사를 하드코딩할 수 없다)
+            const nm=this.C.CLUES[s.needs].name, cc=nm.charCodeAt(nm.length-1);
+            const jo=(cc>=0xAC00&&cc<=0xD7A3&&(cc-0xAC00)%28>0)?'을':'를';
+            this.toast(ICON.lock+'<span>먼저 '+nm+jo+' 찾아야 한다.</span>');
             return;
           }
           this.openInspect(s.inspect, s.needs);
@@ -1502,19 +1512,25 @@ const G = {
 
   /* ----- 심문 ----- */
   openTalkMenu(){
-    // 허브 그리드를 인물 카드로 바꿔 심문 대상을 고른다 (renderHub가 방 카드로 되돌린다)
+    // 허브 그리드를 인물 카드로 바꿔 심문 대상을 고른다.
+    // 같은 버튼을 다시 누르면 방 카드로 되돌린다 — 인물 화면을 왕복하는 것만이
+    // 탈출 경로면 갇힌 느낌을 주기 때문. (renderHub 진입 시에도 원상복구)
+    if(this._talkMenu){ this._talkMenu=false; this.renderHub(); return; }
+    this._talkMenu=true;
     const grid=this.$('hubGrid'); grid.innerHTML='';
     for(const key in this.C.PEOPLE){
       const p=this.C.PEOPLE[key];
       // person 클래스는 표현 전용 — 인물 카드는 얼굴만 확대되지 않게 별도 크롭 규칙을 쓴다
       const card=document.createElement('div'); card.className='room-card person';
-      card.innerHTML='<img data-k="'+p.img+'" src="'+IMG[p.img]+'">'+
+      card.innerHTML='<img data-k="'+p.img+'" src="'+IMG[p.img]+'" alt="">'+
         '<div class="room-label"><span>'+p.name+'</span><small>심문하기</small></div>';
       card.onclick=()=>this.openTalk(key);
       grid.appendChild(card);
     }
     this.$('deduceBtn').disabled=true;
-    this.toast('심문할 인물을 선택하세요 (수첩·추리는 '+this.C.hubWord+' 화면에서)', 2600);
+    // renderHub 가 남긴 "준비 완료!" 라벨이 비활성 버튼에 그대로 보이지 않게 덮는다
+    this.$('deduceBtn').innerHTML=ICON.scales+'<span>추리 시작 ('+this.C.hubWord+' 화면에서)</span>';
+    this.toast('심문할 인물을 선택하세요 — [인물 심문]을 다시 누르면 조사로 돌아갑니다', 2600);
   },
   openTalk(key){
     const p=this.C.PEOPLE[key];
@@ -1563,9 +1579,10 @@ const G = {
       const t=this.C.TESTI[id];
       list.innerHTML+='<div class="clue-item testi"><b>'+ICON.talk+'<span>'+t.name+'</span></b><br>'+t.desc+'</div>';
     });
+    this.$('nbVeil').style.display='block';
     this.$('notebook').style.display='flex';
   },
-  closeNotebook(){ this.$('notebook').style.display='none'; },
+  closeNotebook(){ this.$('nbVeil').style.display='none'; this.$('notebook').style.display='none'; },
 
   /* ----- 추리 ----- */
   tryDeduce(){
@@ -1618,7 +1635,7 @@ const G = {
   ending(){
     const e=this.C.ending;
     this.setImg('endImg', e.img);
-    const grade=this.wrong===0?'S — 가스안전 마스터':this.wrong<=2?'A — 우수 조사관':'B — 진실 도달';
+    const grade=this.wrong===0?'S — 가스안전 마스터':this.wrong<=2?'A — 우수 탐정':'B — 진실 도달';
     this.$('endTitle').textContent=e.title;
     this.$('endText').textContent=e.text;
     // 교육 요약 카드 — recap 이 있는 사건에서만 펼친다
