@@ -30,6 +30,8 @@
 |---|---|
 | `index.html` | 게임 전체 — 화면, 엔진, 시나리오 데이터, WebAudio 효과음 |
 | `assets/*.webp` | 배경 13장 + 인물 10장 = 총 23장 |
+| `assets/fonts/` | 서브셋 웹폰트 4벌(woff2, 총 ~0.4MB) + SIL OFL 1.1 라이선스 원문 |
+| `tools/build-fonts.sh` | 시나리오 텍스트 변경 시 서브셋 재생성 스크립트 |
 
 이미지는 로컬 `assets/`를 먼저 쓰고, 파일이 없으면 원본 Higgsfield CDN(PNG)으로 자동 폴백한다.
 폴백 URL은 `index.html`의 `CDN` 객체에 들어 있다.
@@ -108,6 +110,12 @@ const CASES = { case1:CASE1, case2:CASE2, case3:CASE3 };
 
 여백을 잘라낸 덕에 `object-fit:contain` 기준으로 인물이 화면을 꽉 채우고,
 `object-position:bottom`으로 대화 상자 위에 정확히 붙는다.
+
+- **폰트 4벌** — 나눔명조 700/800(제목), Noto Sans KR 400/700(본문). Google Fonts 배포본을
+  `index.html`의 전체 문자 + ASCII 로 서브셋해 woff2 로 동봉했다(834자 기준 총 ~0.4MB).
+  덕분에 **인터넷 없이도(오프라인 전시·수업) 동일하게 렌더**되고 외부 요청이 0건이다.
+  라이선스는 SIL OFL 1.1 — 원문을 `assets/fonts/OFL-*.txt`로 함께 둔다.
+  시나리오에 새 글자를 추가하면 `tools/build-fonts.sh`로 다시 잘라야 한다.
 
 ## 조작
 

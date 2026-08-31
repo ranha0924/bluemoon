@@ -5,10 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>터지기 전에 — 가스안전 사건파일 · 추리 어드벤처</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2312100e'/><path d='M16 4c4.5 5.5 7.5 9 7.5 14a7.5 7.5 0 0 1-15 0c0-5 3-8.5 7.5-14z' fill='%236fb3e0'/><path d='M16 14.5c2.2 2.7 3.7 4.4 3.7 6.9a3.7 3.7 0 0 1-7.4 0c0-2.5 1.5-4.2 3.7-6.9z' fill='%23e9f5ff'/></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&amp;family=Noto+Sans+KR:wght@400;700&amp;display=swap">
 <style>
+  /* 폰트는 저장소에 서브셋 woff2 로 동봉한다(총 ~0.4MB) — 인터넷 없는 전시·수업
+     환경에서도 동일하게 렌더된다. 서브셋은 index.html 의 전체 문자 + ASCII 기준
+     (tools/build-fonts.sh 로 재생성). 시나리오 텍스트에 새 글자를 추가하면
+     그 스크립트를 다시 돌려야 한다 — 안 돌리면 그 글자만 시스템 폰트로 폴백된다.
+     라이선스: SIL OFL 1.1 (assets/fonts/OFL-*.txt 동봉). */
+  @font-face { font-family:'Nanum Myeongjo'; font-style:normal; font-weight:700;
+    font-display:swap; src:url('assets/fonts/NanumMyeongjo-700.subset.woff2') format('woff2'); }
+  @font-face { font-family:'Nanum Myeongjo'; font-style:normal; font-weight:800;
+    font-display:swap; src:url('assets/fonts/NanumMyeongjo-800.subset.woff2') format('woff2'); }
+  @font-face { font-family:'Noto Sans KR'; font-style:normal; font-weight:400;
+    font-display:swap; src:url('assets/fonts/NotoSansKR-400.subset.woff2') format('woff2'); }
+  @font-face { font-family:'Noto Sans KR'; font-style:normal; font-weight:700;
+    font-display:swap; src:url('assets/fonts/NotoSansKR-700.subset.woff2') format('woff2'); }
   :root {
     --gold:#c8a55c; --gold-dim:#6d5f42; --gold-soft:rgba(200,165,92,.4);
     --paper:#efe6d2; --paper-ink:#2a241c; --leather:#2a221a;
