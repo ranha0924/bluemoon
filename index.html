@@ -552,9 +552,20 @@
   #toast > span { display:inline-block; vertical-align:middle; }
 
   /* #game 이 통째로 축소되므로 화면 크기별 레이아웃 분기는 필요하지 않다. */
+
+  /* 세로 화면 회전 안내 (표시 여부는 fitStage 의 JS 판정 — 미디어 쿼리 아님) */
+  #rotateHint { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:99;
+    display:none; background:linear-gradient(180deg,#2a2317,#171208);
+    border:1px solid var(--gold); border-radius:6px; color:#e9ddc0;
+    font-family:var(--ff-body); font-size:13px; font-weight:700;
+    padding:10px 18px; max-width:86vw; text-align:center; cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,.6); }
 </style>
 </head>
 <body>
+<!-- 세로 화면 회전 안내 — #fit 바깥의 고정 오버레이라 #game 좌표계·배율에 영향 없음.
+     표시 판정은 fitStage()의 JS 가 한다 (화면 크기 미디어 쿼리 금지 원칙 유지). -->
+<div id="rotateHint" onclick="this.style.display='none'; window._rhDismiss=1">화면을 가로로 돌리면 더 크게 즐길 수 있어요</div>
 <div id="fit"><div id="game">
 
   <!-- 타이틀 -->
@@ -570,7 +581,7 @@
       <div class="title-bottom">
         <button class="btn gold" style="font-size:1.1rem; padding:14px 46px" onclick="G.show('scr-lobby')">사건 파일 열기</button>
         <div style="color:#a99f8a; font-size:.82rem">두 건의 가스사고 파일이 탐정을 기다리고 있다</div>
-        <div style="color:#7e7462; font-size:.66rem; letter-spacing:.08em">실제 가스안전 수칙과 통계를 바탕으로 제작되었습니다</div>
+        <div style="color:#7e7462; font-size:.66rem; letter-spacing:.08em; line-height:1.9">한 사건 표준 5~10분 · 빠른 조사 모드 3~4분 · 태블릿/PC 화면 권장<br>실제 가스안전 수칙과 통계를 바탕으로 제작되었습니다</div>
       </div>
       <div class="ver">ver 4.0</div>
     </div>
@@ -860,6 +871,11 @@ const STAGE_W = 1000;
 function fitStage(){
   const fit = document.getElementById('fit');
   document.getElementById('game').style.setProperty('--s', fit.clientWidth / STAGE_W);
+  // 세로 화면에선 16:10 프레임이 가운데 작은 띠가 되므로 가로 회전을 권한다.
+  // 탭해서 닫으면(_rhDismiss) 그 세션에서는 다시 띄우지 않는다.
+  const hint = document.getElementById('rotateHint');
+  if (hint && !window._rhDismiss)
+    hint.style.display = (innerHeight > innerWidth * 1.2) ? 'block' : 'none';
 }
 addEventListener('resize', fitStage);
 
