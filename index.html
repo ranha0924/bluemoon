@@ -823,8 +823,9 @@ const SND = {
     src.connect(f); f.connect(g); g.connect(c.destination); src.start();
     this.rainNodes={src,g};
   },
-  // 이 화이트노이즈는 사건 2(폭설)의 눈보라 바람 소리로 쓴다. 여름 캠핑장인
-  // 사건 1(rain:false)에서는 볼륨만 0으로 내린다 — 한 번 만든 노드를 끊지 않고
+  // 사건 데이터의 rain:true 가 켜는 배경 화이트노이즈(바람·빗소리용).
+  // 현재 두 사건 모두 rain:false 라 쓰이지 않지만, 새 사건이 켤 수 있도록 남겨 둔다.
+  // rain:false 사건에서는 볼륨만 0으로 내린다 — 한 번 만든 노드를 끊지 않고
   // 재사용해야 사건을 오갈 때 잡음이 생기지 않는다.
   setRain(want){
     this.wantRain=!!want;
@@ -1024,7 +1025,7 @@ const CASE2 = {
   no:2, name:"보이지 않는 손님", cover:"cover2",
   intro:"폭설 내린 밤, 냄새도 소리도 없이 펜션 손님들이 쓰러져 갔다. 다섯 번째 손님의 정체는 — 사람이 아니다.",
   hubTitle:"설래원 펜션 — 조사 중", hubWord:"펜션", backLabel:"펜션으로",
-  talkBg:"guestroom", rain:true,
+  talkBg:"guestroom", rain:false,
   needTesti:"t1", needLabel:"설아의 증언",
 
   /* ---------- 단서 ---------- */
