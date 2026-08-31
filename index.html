@@ -481,9 +481,12 @@
   #endRecap li { list-style:none; font-size:.78rem; line-height:1.7; color:#e9dfc8;
     display:flex; align-items:baseline; gap:8px; }
   #endRecap li::before { content:'✓'; color:var(--gold); font-size:.72rem; }
-  /* 수칙 카드 푸터: 출처 표기 — 공모전 심사에서 수치 근거를 물을 때의 답이기도 하다 */
-  #endRecap .recap-src { margin-top:6px; padding-top:5px;
+  /* 수칙 카드 푸터: 신고·상담 연락처(대피 다음 행동) + 출처 표기 —
+     공모전 심사에서 수치 근거를 물을 때의 답이기도 하다 */
+  #endRecap .recap-call { margin-top:6px; padding-top:5px;
     border-top:1px solid rgba(200,165,92,.25);
+    font-size:.68rem; letter-spacing:.04em; color:#e9dfc8; font-weight:700; text-align:center; }
+  #endRecap .recap-src { margin-top:2px;
     font-size:.6rem; letter-spacing:.05em; color:#a99f8a; text-align:center; }
   /* 등급 인장: ::before 가 큰 원형 도장, 원문 텍스트는 아래에 작게 남긴다 */
   #endGrade { display:flex; flex-direction:column; align-items:center; gap:8px;
@@ -662,6 +665,7 @@
       <div class="orn"></div>
       <p id="endText"></p>
       <div id="endRecap"><h4>오늘의 가스안전 수칙</h4><ul id="endRecapList"></ul>
+        <div class="recap-call">가스사고 신고는 119 · 가스 안전 상담은 국번 없이 1544-4500 (한국가스안전공사)</div>
         <div class="recap-src">출처 — 한국가스안전공사·행정안전부·질병관리청 발표 수칙·통계</div></div>
       <div id="endGrade"></div>
       <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center">
