@@ -318,6 +318,8 @@
     background:linear-gradient(180deg, rgba(52,44,29,.96), rgba(26,21,14,.97)); }
   .spot-btn:active { transform:translateY(1px); }
   .spot-btn.done { opacity:.5; }
+  /* 잠긴 3D 조사 스팟 — 심문 질문(.q-btn.locked)과 같은 규칙으로 흐려서 구분한다 */
+  .spot-btn.locked { opacity:.5; }
   /* 금색 체크 각인. CSS 배경 SVG 는 currentColor 를 못 받으므로 색을 직접 지정한다. */
   .spot-btn.done::after { content:''; width:13px; height:13px; margin-left:auto; flex:0 0 auto;
     background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c8a55c' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 12.5l5 5 10-11'/%3E%3C/svg%3E"); }
@@ -548,8 +550,12 @@
     0%   { transform:translate(-50%,-24px); opacity:0 }
     70%  { transform:translate(-50%,1px);   opacity:1 }
     100% { transform:translate(-50%,0);     opacity:1 } }
-  #toast .ico { width:15px; height:15px; color:var(--gold); }
-  #toast > span { display:inline-block; vertical-align:middle; }
+  /* 아이콘의 전역 display:block 을 토스트 안에서만 인라인으로 되돌린다 —
+     안 하면 아이콘이 윗줄에 얹혀 토스트가 2단이 되고, 심문 화면의 인물 이름과
+     엔딩 제목을 아래로 침범한다 (레이아웃 검사에서 실측된 겹침). */
+  #toast .ico { width:15px; height:15px; color:var(--gold);
+    display:inline-block; vertical-align:-3px; margin-right:6px; }
+  #toast > span { display:inline; vertical-align:middle; }
 
   /* #game 이 통째로 축소되므로 화면 크기별 레이아웃 분기는 필요하지 않다. */
 
@@ -926,7 +932,7 @@ const CASE1 = {
       fast:"함부로 버려진 폐캔 — 다 쓴 캔은 [[바로 분리]]하고, 잔가스는 [[야외에서 바람을 등지고]] 뺀다." },
     c7:{ name:"볕에 달궈진 재고", desc:"매점 창가, 한여름 직사광선에 달궈진 부탄캔 박스. 제조일이 3년을 넘겼다 — 부탄캔 [[권장사용기간은 제조일로부터 3년]]이다.",
       fast:"한여름 볕에 달궈진 3년 묵은 재고 — 부탄캔 [[권장사용기간은 제조일로부터 3년]]이다." },
-    c8:{ name:"트럭 짐칸의 온도계", desc:"재고를 실어 나르던 트럭 짐칸 안의 온도계가 60℃ 를 가리킨다. 여름철 차 안은 [[트렁크까지 60℃]] 넘게 치솟는다 — 부탄캔 보관은 [[40℃ 이하]] 장소가 원칙이다.",
+    c8:{ name:"트럭 짐칸의 온도계", desc:"재고를 실어 나르던 트럭 짐칸 안의 온도계가 60℃를 가리킨다. 여름철 차 안은 [[트렁크까지 60℃]] 넘게 치솟는다 — 부탄캔 보관은 [[40℃ 이하]] 장소가 원칙이다.",
       fast:"트럭 짐칸의 온도계가 60℃ — 부탄캔 보관은 [[40℃ 이하]]이 원칙이다." }
   },
   TESTI: {
@@ -962,7 +968,7 @@ const CASE1 = {
         { q:"이 캔, 어디서 난 겁니까?", need:"c7",
           a:"…우리 매점 재고요. 박스째 싸게 들여온 게 3년 전인데, 버리긴 아깝고… 서비스로 한 통씩 돌렸습니다. 캔이야 다 거기서 거기 아닙니까?" },
         { q:"재고를 트럭에 보관하셨죠?", need:"c8",
-          a:"창고가 좁아서… 여름내 짐칸에 실어 뒀습니다. (고개를 떨군다) [[한낮 짐칸이 60℃]] 까지 오르는 줄은… 정말 몰랐습니다." }
+          a:"창고가 좁아서… 여름내 짐칸에 실어 뒀습니다. (고개를 떨군다) [[한낮 짐칸이 60℃]]까지 오르는 줄은… 정말 몰랐습니다." }
       ]},
     parttime:{ name:"한여름 · 알바(22)", img:"parttime",
       desc:"매점 알바생. 사고 직전 마지막으로 레인지를 만졌다는 이유로 모두의 의심을 받고 있다.",
@@ -1740,7 +1746,9 @@ const G = {
       const b=document.createElement('button');
       b.className='q-btn'+(locked?' locked':'')+(this.asked.has(akey)?' asked':'');
       b.style.width='100%'; b.style.marginBottom='8px';
-      b.innerHTML=(locked?ICON.lock:ICON.talk)+'<span>'+qa.q+(locked?' (관련 단서 필요)':'')+'</span>';
+      // 잠금 사유를 정확히 알려준다 — need 가 증언 id 면 '증언', 아니면 '단서'
+      const needLbl=locked?(this.C.TESTI[qa.need]?' (관련 증언 필요)':' (관련 단서 필요)'):'';
+      b.innerHTML=(locked?ICON.lock:ICON.talk)+'<span>'+qa.q+needLbl+'</span>';
       b.onclick=()=>{
         if(locked){ this.toast('이 질문을 하려면 관련 단서나 증언이 먼저 필요하다.'); return; }
         this.asked.add(akey);
