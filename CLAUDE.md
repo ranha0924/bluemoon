@@ -67,6 +67,7 @@ UI를 수정했다면 최소한 아래를 확인한다.
 
 1. **전체 플레이 통과** — 프롤로그 → 단서 8개 → 증언 `t1` → 추리 4문항 → 엔딩.
    `G.clues`, `G.testis` 같은 내부 상태를 `page.evaluate`로 직접 읽어 확인한다.
+   빠른 조사 모드(로비 토글)를 켠 플레이도 한 번 통과한다 — 프롤로그·진상 3줄, 추리 3문항.
 2. **이미지 23장 전부 200**, 그리고 `naturalWidth === 0`인 `<img>`가 없어야 한다.
 3. **콘솔 에러 0건.**
 4. **레이아웃 겹침** — 여러 화면 크기(1100×760 ~ 420×760)에서 `#toast`와 화면 내용의
@@ -74,9 +75,9 @@ UI를 수정했다면 최소한 아래를 확인한다.
    눈으로 보고 넘기지 말고 좌표를 계산해서 검사한다.
 
 `.screen`은 `display:none`으로 숨기기만 하고 DOM에서 제거하지 않는다. 그래서 **모든 화면의
-버튼이 항상 동시에 존재한다.** `class="btn"`은 8개 컨테이너(`scr-title` / `scr-lobby` /
+버튼이 항상 동시에 존재한다.** `class="btn"`은 8개 컨테이너(`scr-title` / `scr-lobby`×2 /
 `scr-hub`×4 / `scr-room` / `scr-talk` / `scr-end`×2 / `scr-inspect` / `#notebook`)에
-12개가 깔려 있다. 사건별 `backLabel`(`"캠핑장으로"` / `"펜션으로"`)은 `scr-room`에만 적용되고,
+13개가 깔려 있다. 사건별 `backLabel`(`"캠핑장으로"` / `"펜션으로"`)은 `scr-room`에만 적용되고,
 `scr-talk`의 `"인물 선택으로"`(인물 선택창 복귀)와 `scr-inspect`의 `"돌아가기"`는 정적
 텍스트다. 반드시 `#scr-room .btn`처럼 화면 단위로 범위를 좁혀서 잡는다.
 
@@ -84,7 +85,7 @@ UI를 수정했다면 최소한 아래를 확인한다.
 
 ## Git
 
-- 작업 브랜치: `claude/kgs-ai-contest-redesign-y3zxg1`
+- 작업 브랜치: `claude/gas-safety-game-judging-79br6h`
 - **푸시 전에 `git branch --show-current`로 현재 브랜치를 확인한다.** 머지 직후에는 `main`이
   체크아웃된 상태로 남아 있을 수 있어서, 확인 없이 밀면 `main`으로 바로 들어간다.
 - 푸시는 `git push -u origin <branch>`. 네트워크 실패 시에만 2s/4s/8s/16s 백오프로 재시도.
