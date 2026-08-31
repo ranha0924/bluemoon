@@ -57,6 +57,10 @@
     background:radial-gradient(circle, rgba(217,185,106,.35), transparent 65%);
     animation:goldPop .5s ease; }
   @keyframes goldPop { from{opacity:1; transform:scale(.8)} to{opacity:0; transform:scale(1.15)} }
+  /* 사고 재현의 오답 플래시 — 움직임은 goldPop 그대로, 색만 경고색 */
+  #redFlash { position:absolute; inset:0; z-index:40; pointer-events:none; display:none;
+    background:radial-gradient(circle, rgba(212,84,74,.34), transparent 65%);
+    animation:goldPop .5s ease; }
 
   /* ---------- 아이콘 ---------- */
   .ico { width:16px; height:16px; flex:0 0 auto; pointer-events:none; display:block; }
@@ -209,14 +213,14 @@
      검사에 걸린다 — 가장자리에 붙은 스팟(nextsite c4·store c8·guestroom c6·kitchen3 c7)이
      실제로 4~8px 초과했다. 그래서 링·어둠·확대는 ::before 레이어가 맡고,
      껍데기의 박스는 항상 지정 좌표 그대로 남는다. */
-  #dlgFocus { position:absolute; display:none; z-index:1; pointer-events:none; }
-  #dlgFocus.on { display:block; }
-  #dlgFocus::before { content:''; position:absolute; inset:0; border-radius:50%;
+  #dlgFocus, #simFocus { position:absolute; display:none; z-index:1; pointer-events:none; }
+  #dlgFocus.on, #simFocus.on { display:block; }
+  #dlgFocus::before, #simFocus::before { content:''; position:absolute; inset:0; border-radius:50%;
     border:2px solid rgba(240,200,100,.95);
     box-shadow:0 0 0 1500px rgba(8,6,3,.52), 0 0 26px rgba(240,200,100,.55),
       inset 0 0 20px rgba(240,200,100,.28);
     animation:focusIn .7s cubic-bezier(.2,1.3,.4,1) both; }
-  #dlgFocus::after { content:''; position:absolute; inset:-6px; border-radius:50%;
+  #dlgFocus::after, #simFocus::after { content:''; position:absolute; inset:-6px; border-radius:50%;
     border:1px solid rgba(240,200,100,.75);
     animation:focusPulse 2.2s ease-in-out .9s infinite; }
   @keyframes focusIn { from { transform:scale(2.3); opacity:0 } to { transform:scale(1); opacity:1 } }
@@ -379,8 +383,8 @@
     display:flex; align-items:flex-start; gap:10px;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
     transition:background .18s, border-color .18s, transform .15s, filter .18s; }
-  /* 가/나/다/라 원형 각인 */
-  .deduce-opts .d-btn::before { flex:0 0 auto; width:19px; height:19px; margin-top:1px;
+  /* 가/나/다/라 원형 각인 (사고 재현의 1~4 번호도 같은 각인을 쓴다) */
+  .deduce-opts .d-btn::before, #simActs .d-btn::before { flex:0 0 auto; width:19px; height:19px; margin-top:1px;
     display:inline-flex; align-items:center; justify-content:center;
     border:1px solid rgba(200,165,92,.55); border-radius:50%;
     font-family:var(--ff-title); font-size:10px; color:var(--gold); }
@@ -408,8 +412,8 @@
     text-decoration:line-through; filter:saturate(.35) brightness(.8); }
   #deduceFb { min-height:2.6em; text-align:center; line-height:1.6; color:#c9bfa8; width:100%;
     display:flex; align-items:center; justify-content:center; gap:8px; font-size:.9rem; }
-  #deduceFb .fb-ok { color:var(--gold); display:inline-flex; }
-  #deduceFb .fb-x { color:#c07a72; display:inline-flex; }
+  #deduceFb .fb-ok, #simFb .fb-ok { color:var(--gold); display:inline-flex; }
+  #deduceFb .fb-x, #simFb .fb-x { color:#c07a72; display:inline-flex; }
   /* 진행 표시를 스탬프처럼 */
   #deduceProg { display:inline-flex; align-items:center; gap:9px;
     font-family:var(--ff-title); font-size:10px; letter-spacing:.22em; color:#b8ab8e;
@@ -418,6 +422,49 @@
   #deduceProg .prog-sep { color:var(--gold); font-size:7px; }
   #deduceProg .prog-candles { display:inline-flex; gap:2px; color:#e0b463; }
   #deduceProg .prog-candles .ico { width:12px; height:12px; }
+
+  /* ---------- 사고 재현 시뮬레이션 ---------- */
+  #scr-sim { background:#0d0b09; }
+  /* 오답 흔들림은 반드시 이 내부 래퍼에만 건다 — #game 은 transform:scale(--s) 전용이다 */
+  #simWrap { position:absolute; inset:0; overflow:hidden; }
+  #simWrap.shake { animation:simShake .42s ease; }
+  @keyframes simShake { 0%,100%{transform:none} 18%{transform:translate(-8px,3px)}
+    38%{transform:translate(7px,-4px)} 58%{transform:translate(-5px,2px)} 78%{transform:translate(4px,-1px)} }
+  #simBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .sim-top { position:relative; z-index:2; padding:14px 20px; display:flex;
+    justify-content:space-between; align-items:flex-start; }
+  #simProg { display:inline-flex; align-items:center; font-family:var(--ff-title);
+    font-size:10px; letter-spacing:.22em; color:#cfc3a6; border:1px solid rgba(200,165,92,.4);
+    border-radius:3px; padding:3px 12px; transform:rotate(1.5deg); background:rgba(12,10,7,.72); }
+  #simBrief { position:absolute; left:50%; top:90px; transform:translateX(-50%); z-index:4;
+    width:660px; max-width:88%; padding:12px 18px; text-align:center; line-height:1.65;
+    font-size:.95rem; color:#efe8d8; background:rgba(12,10,7,.84);
+    border:1px solid var(--gold-soft); border-radius:6px; }
+  #simBrief .sim-note { display:block; margin-top:4px; font-size:.74rem; color:#a3987f;
+    letter-spacing:.06em; }
+  #simFb { position:absolute; left:5%; right:5%; bottom:152px; z-index:4; min-height:2.2em;
+    display:flex; align-items:center; justify-content:center; gap:8px; text-align:center;
+    line-height:1.55; font-size:.9rem; color:#e6dcc4; text-shadow:0 2px 6px #000, 0 0 14px #000; }
+  #simActs { position:absolute; left:3%; right:3%; bottom:3%; z-index:3;
+    display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  /* 번호 각인 — 추리의 가/나/다/라와 같은 원형. 이후 키보드 1~4 매핑과 짝을 이룬다 */
+  #simActs .d-btn:nth-child(1)::before { content:'1'; }
+  #simActs .d-btn:nth-child(2)::before { content:'2'; }
+  #simActs .d-btn:nth-child(3)::before { content:'3'; }
+  #simActs .d-btn:nth-child(4)::before { content:'4'; }
+  /* 배경 그림 위라 살짝 투명한 스팟 태그 톤으로 */
+  #simActs .d-btn { background:linear-gradient(180deg, rgba(38,32,22,.94), rgba(18,15,10,.96)); }
+  #simActs .d-btn.right::after { content:'조치'; }
+  #simBanner { position:absolute; inset:0; z-index:5; display:none; align-items:center;
+    justify-content:center; pointer-events:none; }
+  #simBanner.on { display:flex; }
+  #simBanner span { font-family:var(--ff-title); font-weight:800; font-size:1.9rem; color:#f2e7c8;
+    letter-spacing:.1em; padding:16px 34px; transform:rotate(-3deg);
+    border:3px solid var(--gold); border-radius:8px; background:rgba(12,10,7,.85);
+    box-shadow:0 0 42px rgba(217,185,106,.35), inset 0 0 0 1px rgba(217,185,106,.4);
+    animation:bannerIn .3s cubic-bezier(.2,1.5,.4,1) both; }
+  @keyframes bannerIn { from { transform:scale(1.6) rotate(-3deg); opacity:0 }
+    to { transform:scale(1) rotate(-3deg); opacity:1 } }
 
   /* ---------- 수첩 ---------- */
   /* 수첩 백드롭 — 아래 화면의 노출된 여백(방 카드 가장자리·하단 버튼)이 클릭되는 것을 막고,
@@ -675,6 +722,24 @@
     </div>
   </div>
 
+  <!-- 사고 재현 시뮬레이션 -->
+  <div class="screen" id="scr-sim">
+    <div id="simWrap">
+      <img id="simBg" alt="">
+      <div class="room-veil"></div>
+      <div id="simFocus"></div>
+      <div class="sim-top">
+        <div class="room-title" id="simTitle"></div>
+        <div id="simProg"></div>
+      </div>
+      <div id="simBrief"><span id="simBriefText"></span>
+        <span class="sim-note">재현 실험 — 무엇을 골라도 등급과 촛불에는 영향이 없다</span></div>
+      <div id="simFb"></div>
+      <div id="simActs"></div>
+      <div id="simBanner"><span id="simBannerText"></span></div>
+    </div>
+  </div>
+
   <!-- 엔딩 -->
   <div class="screen" id="scr-end">
     <img id="endImg" alt="">
@@ -718,6 +783,7 @@
 
   <div id="toast"></div>
   <div id="goldFlash"></div>
+  <div id="redFlash"></div>
 </div></div>
 
 <script>
@@ -864,9 +930,26 @@ const SND = {
   applyRain(){
     if(this.rainNodes) this.rainNodes.g.gain.value=(this.on&&this.wantRain)?.035:0;
   },
+  /* 사고 재현의 가스 누출음 — rain 과 같은 '노드 재사용 + 게인 게이트' 패턴.
+     고역 협대역 노이즈라 쉭쉭대는 새는 소리가 된다. 사운드 파일은 쓰지 않는다. */
+  hissNodes:null, wantHiss:false,
+  hiss(){
+    const c=this.ensure(); if(!c||this.hissNodes) return;
+    const len=2*c.sampleRate, buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+    const src=c.createBufferSource(); src.buffer=buf; src.loop=true;
+    const f=c.createBiquadFilter(); f.type='bandpass'; f.frequency.value=4800; f.Q.value=1.1;
+    const g=c.createGain(); g.gain.value=0;
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start();
+    this.hissNodes={src,g};
+  },
+  hissStart(){ this.wantHiss=true; this.hiss(); this.applyHiss(); },
+  hissStop(){ this.wantHiss=false; this.applyHiss(); },
+  applyHiss(){ if(this.hissNodes) this.hissNodes.g.gain.value=(this.on&&this.wantHiss)?.05:0; },
   toggle(){
     this.on=!this.on;
     this.applyRain();
+    this.applyHiss();
     return this.on;
   }
 };
@@ -892,6 +975,11 @@ function PLAIN(s){ return s.replace(/\[\[|\]\]/g, ''); }
 
 function flashGold(){
   const el=document.getElementById('goldFlash');
+  el.style.display='none'; void el.offsetWidth; el.style.display='block';
+  setTimeout(()=>el.style.display='none', 520);
+}
+function flashRed(){
+  const el=document.getElementById('redFlash');
   el.style.display='none'; void el.offsetWidth; el.style.display='block';
   setTimeout(()=>el.style.display='none', 520);
 }
@@ -1063,6 +1151,24 @@ const CASE1 = {
     { name:"한세인", text:"파열음보다 빨랐던 열두 살의 외침 — [[안전교육은 언제나 사고보다 빨라야 한다]].", pt:"detective", img:"end1" }
   ],
 
+  /* ---------- 사고 재현 (선택 필드 — 없으면 추리에서 곧장 진상 공개로) ---------- */
+  SIM: {
+    bg:"bbq", title:"사고 재현 — 파열 30초 전",
+    brief:"그날 밤의 그늘막. 불판 아래 부탄캔이 [[부풀어 오르며 쉭쉭]]대기 시작한다. 당신이 그 자리에 있다면, 지금 무엇을 하겠는가?",
+    focus:[330,330,180], loop:"hiss", need:1,
+    actions:[
+      { label:"물을 뿌려 캔을 식힌다",
+        fb:"부푼 캔에 다가가는 것부터가 도박이다 — 지금 필요한 건 냉각이 아니라 [[거리]]다." },
+      { label:"캔을 뽑아 멀리 던진다",
+        fb:"가장 위험한 선택. 한계까지 부푼 캔은 [[건드리는 순간]] 터질 수 있다." },
+      { label:"레인지로 다가가 밸브를 잠근다",
+        fb:"부풀기 전이라면 옳다. 하지만 [[쉭쉭대며 부푼 지금]]은 곁에 머무는 1초가 도박이다." },
+      { label:"크게 외쳐 모두를 물러나게 한다", ok:true,
+        fb:"터지기 직전의 신호를 알아챘다 — 만지지 말고, 알리고, 물러난다." }
+    ],
+    success:"\"모두 물러나요!\" — 전원 무사"
+  },
+
   deduceIntro:{ name:"한세인", text:"단서는 모두 모였다. 이 사고는 우연이 아니라 겹겹의 부주의였다 — 모두 화로터로 모여 주시죠.", pt:"detective", img:"firepit" },
   regroup:{ name:"한세인", text:"…성급했다. 랜턴을 다시 켜고 수첩을 처음부터 훑자. 사고 원인은 도망가지 않는다.", pt:"detective", img:"bbq" },
   ending:{ img:"end1", title:"조사 종결 — 한여름 밤의 파열음",
@@ -1230,6 +1336,24 @@ const CASE2 = {
     { name:"한세인", text:"침입 경로는 배기통 — [[이탈·찌그러짐·막힘]] 3종이 전부 무너졌습니다. 수명 지난 경보기는 건전지마저 빠져 있었고, 온수철 씨는 용의자가 아니라 모두를 깨운 구조자였죠.", pt:"keeper", img:"boilerroom" },
     { name:"한세인", text:"[[경보기는 5년마다, 점검은 1년마다, 환기는 2시간마다]] — 보이지 않는 손님은 보이는 습관이 막는다.", pt:"detective", img:"end2" }
   ],
+
+  /* ---------- 사고 재현 — 전수행형: ok 조치 3개를 모두 수행해야 한다 ---------- */
+  SIM: {
+    bg:"guestroom", title:"사고 재현 — 새벽의 205호",
+    brief:"새벽, 머리가 깨질 듯 아프고 어지럽다. 냄새도 소리도 색도 없다 — 배운 대로라면 [[일산화탄소의 신호]]다. 필요한 조치를 모두 행하라.",
+    need:3,
+    actions:[
+      { label:"어지러우니 일단 다시 눕는다",
+        fb:"가장 위험한 선택. 그 [[졸음이 바로 중독 증상]]이다 — 다시 잠들면 깨어나지 못할 수 있다." },
+      { label:"창문을 활짝 열어 환기한다", ok:true,
+        fb:"맞다. [[신선한 공기]]가 최우선이다 — 창부터 활짝 연다." },
+      { label:"문을 두드려 모두를 깨운다", ok:true,
+        fb:"맞다. 일산화탄소는 [[잠든 사람부터]] 쓰러뜨린다 — 전원이 깨어나야 한다." },
+      { label:"119에 신고하고 밖으로 대피한다", ok:true,
+        fb:"맞다. 대피 후 [[119]] — 중독이 의심되면 병원에서 산소 치료를 받아야 한다." }
+    ],
+    success:"전원 무사 — 보이지 않는 손님을 몰아냈다"
+  },
 
   deduceIntro:{ name:"한세인", text:"단서는 모두 모였다. 보이지 않는 손님의 정체를 밝힐 시간이다 — 모두 1층 난롯가로 모여 주시죠.", pt:"detective", img:"kitchen3" },
   regroup:{ name:"한세인", text:"…아니다. 찬바람을 한 번 쐬고 머리를 식히자. 수첩을 다시 펼치면 길이 보인다.", pt:"detective", img:"rooftop" },
@@ -1476,6 +1600,69 @@ const INSPECT = {
     addEventListener('mousemove',move);    cv.addEventListener('touchmove',move,{passive:false});
     addEventListener('mouseup',up);        addEventListener('touchend',up);
     addEventListener('resize',()=>{ if(this.raf) this.resize(); });
+  }
+};
+
+/* ---------- 사고 재현 시뮬레이션 ----------
+   추리 전 문항을 맞힌 뒤, 진상 공개(REVEAL) 직전에 끼어드는 행동 재현 단계.
+   사건 데이터의 선택 필드 SIM 이 없으면 기존 흐름 그대로다 — 엔진(G)은
+   finishDeduce 한 곳에서만 이 객체를 부른다. 학습용 자유 실험 공간이므로
+   오답을 몇 번 고르든 G.wrong·G.hearts 는 절대 건드리지 않는다(등급 무영향). */
+const SIM = {
+  cfg:null, onEnd:null, doneN:0, finished:false,
+  play(cfg, onEnd){
+    this.cfg=cfg; this.onEnd=onEnd; this.doneN=0; this.finished=false;
+    SND.hissStop();                      // 재플레이 대비 방어적 정지
+    G.setImg('simBg', cfg.bg);
+    G.$('simTitle').textContent=cfg.title;
+    G.$('simBriefText').innerHTML=HL(cfg.brief);
+    G.$('simFb').innerHTML='';
+    G.$('simBanner').classList.remove('on');
+    const fc=G.$('simFocus'); fc.classList.remove('on');
+    const f=cfg.focus;
+    if(f){ fc.style.left=(f[0]-f[2])+'px'; fc.style.top=(f[1]-f[2])+'px';
+      fc.style.width=fc.style.height=(f[2]*2)+'px'; void fc.offsetWidth; fc.classList.add('on'); }
+    const box=G.$('simActs'); box.innerHTML='';
+    cfg.actions.forEach((a,i)=>{
+      const b=document.createElement('button'); b.className='d-btn'; b.textContent=a.label;
+      b.onclick=()=>this.act(i,b);
+      box.appendChild(b);
+    });
+    this.prog();
+    if(cfg.loop==='hiss') SND.hissStart();
+    G.show('scr-sim');
+  },
+  prog(){
+    const el=G.$('simProg'), need=this.cfg.need||1;
+    el.style.display=need>1?'':'none';
+    el.textContent='조치 '+Math.min(this.doneN,need)+' / '+need;
+  },
+  act(i,btn){
+    if(this.finished||btn.disabled) return;
+    const a=this.cfg.actions[i], fb=G.$('simFb');
+    if(a.ok){
+      SND.good();
+      btn.classList.add('right'); btn.disabled=true;
+      fb.innerHTML='<span class="fb-ok">'+ICON.check+'</span><span>'+HL(a.fb)+'</span>';
+      this.doneN++; this.prog();
+      if(this.doneN>=(this.cfg.need||1)) this.finish();
+    } else {
+      SND.bad(); flashRed();
+      const w=G.$('simWrap');
+      w.classList.remove('shake'); void w.offsetWidth; w.classList.add('shake');
+      btn.classList.add('wrong'); btn.disabled=true;
+      fb.innerHTML='<span class="fb-x">'+ICON.cross+'</span><span>'+HL(a.fb)+'</span>';
+    }
+  },
+  finish(){
+    if(this.finished) return; this.finished=true;
+    SND.hissStop();
+    // 마지막 해설을 읽을 틈 → 성공 배너 → 진상 공개
+    setTimeout(()=>{
+      G.$('simBannerText').textContent=this.cfg.success||'조치 완료';
+      G.$('simBanner').classList.add('on'); SND.ding();
+      setTimeout(()=>{ const cb=this.onEnd; this.onEnd=null; cb&&cb(); }, 1700);
+    }, 650);
   }
 };
 
@@ -1827,8 +2014,7 @@ const G = {
       setTimeout(()=>{
         this.deduceIdx++;
         // 정답 후 1.6초 대기는 빠른 모드에서도 유지한다 — 형광펜 스태거(위 CSS)가 1.6초 전제다.
-        if(this.deduceIdx>=this.DQ.length)
-          this.playDialog((this.fast&&this.C.fastReveal)?this.C.fastReveal:this.C.REVEAL, ()=>this.ending());
+        if(this.deduceIdx>=this.DQ.length) this.finishDeduce();
         else this.renderDeduce();
       }, 1600);
     } else {
@@ -1844,6 +2030,14 @@ const G = {
         this.$('deduceProg').innerHTML=this.progHTML();
       }
     }
+  },
+  // 추리 전 문항 정답 → (사건에 SIM 이 있으면) 사고 재현 → 진상 공개.
+  // fastReveal 폴백 분기는 이 한 곳에 모은다 — 재현은 빠른 모드에서도 동일하게 재생된다.
+  finishDeduce(){
+    const reveal=(this.fast&&this.C.fastReveal)?this.C.fastReveal:this.C.REVEAL;
+    const go=()=>this.playDialog(reveal, ()=>this.ending());
+    if(this.C.SIM&&this.C.SIM.actions&&this.C.SIM.actions.length) SIM.play(this.C.SIM, go);
+    else go();
   },
 
   /* ----- 엔딩 ----- */
