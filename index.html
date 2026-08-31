@@ -190,6 +190,9 @@
     overflow:hidden; cursor:pointer; background:#0d0b09;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
     transition:transform .18s, border-color .18s, box-shadow .18s; }
+  /* 카드류는 div 지만 키보드로도 고른다 — JS 가 tabindex/role 을 붙인다 */
+  .case-card:focus-visible, .room-card:focus-visible { border-color:var(--gold);
+    outline:2px solid var(--gold); outline-offset:2px; }
   .case-card:hover { transform:scale(1.02); border-color:var(--gold);
     box-shadow:0 12px 30px rgba(0,0,0,.6); }
   /* position:absolute — 이미지 로드에 실패해 숨겨져도 카드 높이가 무너지지 않는다. */
@@ -646,7 +649,7 @@
         <div style="color:#a99f8a; font-size:.82rem">두 건의 가스사고 파일이 탐정을 기다리고 있다</div>
         <div style="color:#7e7462; font-size:.66rem; letter-spacing:.08em; line-height:1.9">한 사건 표준 5~10분 · 빠른 조사 모드 3~4분 · 태블릿/PC 화면 권장<br>실제 가스안전 수칙과 통계를 바탕으로 제작되었습니다</div>
       </div>
-      <div class="ver">ver 4.0</div>
+      <div class="ver">ver 4.1</div>
     </div>
   </div>
 
@@ -980,9 +983,19 @@ document.addEventListener('click', e=>{
    Enter/Space 대화 진행 · 1~4 선택지(추리/사고 재현) · Esc 수첩/답변 닫기.
    e.repeat 무시 — 키를 누르고 있어도 한 번만 발화한다. */
 document.addEventListener('keydown', e=>{
-  if(e.repeat||e.ctrlKey||e.metaKey||e.altKey) return;
   const k=e.key;
   const scr=document.querySelector('.screen.active'), id=scr?scr.id:null;
+  // 3D 증거 조사 — 방향키 회전 (드래그의 키보드 대안). 누르고 있기(repeat)를 허용한다.
+  if(id==='scr-inspect'&&(k==='ArrowLeft'||k==='ArrowRight'||k==='ArrowUp'||k==='ArrowDown')
+     &&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+    e.preventDefault(); INSPECT.auto=false;
+    if(k==='ArrowLeft')  INSPECT.ry-=0.16;
+    if(k==='ArrowRight') INSPECT.ry+=0.16;
+    if(k==='ArrowUp')    INSPECT.rx=Math.max(-1.25, INSPECT.rx-0.13);
+    if(k==='ArrowDown')  INSPECT.rx=Math.min(1.25, INSPECT.rx+0.13);
+    return;
+  }
+  if(e.repeat||e.ctrlKey||e.metaKey||e.altKey) return;
   // 1) 수첩이 열려 있으면 닫기만 받는다
   if(G.$('notebook').style.display==='flex'){
     if(k==='Escape'||k==='Enter'||k===' '){ e.preventDefault(); G.closeNotebook(); }
@@ -994,8 +1007,12 @@ document.addEventListener('keydown', e=>{
     if(k==='Escape'||k==='Enter'||k===' '){ e.preventDefault(); ans.style.display='none'; }
     return;
   }
-  // 3) 대화 진행
+  // 3) Enter/Space — 포커스된 카드(사건·방·인물)를 활성화하고, 대화를 진행한다
   if(k==='Enter'||k===' '){
+    const ae=document.activeElement;
+    if(ae&&ae.classList&&(ae.classList.contains('case-card')||ae.classList.contains('room-card'))){
+      e.preventDefault(); ae.click(); return;
+    }
     if(id==='scr-dialog'){ e.preventDefault(); G.nextLine(); }
     return;
   }
@@ -1399,7 +1416,7 @@ const CASE2 = {
     need:3,
     actions:[
       { label:"어지러우니 일단 다시 눕는다",
-        fb:"가장 위험한 선택. 그 [[졸음이 바로 중독 증상]]이다 — 다시 잠들면 깨어나지 못할 수 있다." },
+        fb:"가장 위험한 선택. 어지럽고 잠이 오는 것 [[자체가 중독 증상]]이다 — 다시 잠들면 깨어나지 못할 수 있다." },
       { label:"창문을 활짝 열어 환기한다", ok:true,
         fb:"맞다. [[신선한 공기]]가 최우선이다 — 창부터 활짝 연다." },
       { label:"문을 두드려 모두를 깨운다", ok:true,
@@ -1828,6 +1845,7 @@ const G = {
     for(const key in CASES){
       const c=CASES[key];
       const card=document.createElement('div'); card.className='case-card';
+      card.tabIndex=0; card.setAttribute('role','button');   // 키보드 선택(Enter/Space) 대상
       // 이미지가 없어도(오프라인) 정보부와 클릭은 그대로 살아 있다.
       card.innerHTML='<img data-k="'+c.cover+'" src="'+IMG[c.cover]+'" alt="">'+
         '<div class="case-info">'+
@@ -1882,6 +1900,7 @@ const G = {
       const clueSpots=r.spots.filter(s=>s.clue);   // 조사 전용 지점은 단서 수에서 제외
       const found=clueSpots.filter(s=>this.clues.has(s.clue)).length;
       const card=document.createElement('div'); card.className='room-card';
+      card.tabIndex=0; card.setAttribute('role','button');
       card.innerHTML='<img data-k="'+r.img+'" src="'+IMG[r.img]+'" alt="">'+
         '<div class="room-label"><span>'+r.title+'</span><small>단서 '+found+'/'+clueSpots.length+'</small></div>';
       card.onclick=()=>this.openRoom(key);
@@ -1972,6 +1991,7 @@ const G = {
       const p=this.C.PEOPLE[key];
       // person 클래스는 표현 전용 — 인물 카드는 얼굴만 확대되지 않게 별도 크롭 규칙을 쓴다
       const card=document.createElement('div'); card.className='room-card person';
+      card.tabIndex=0; card.setAttribute('role','button');
       card.innerHTML='<img data-k="'+p.img+'" src="'+IMG[p.img]+'" alt="">'+
         '<div class="room-label"><span>'+p.name+'</span><small>심문하기</small></div>';
       card.onclick=()=>this.openTalk(key);
