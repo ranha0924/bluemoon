@@ -93,6 +93,12 @@ UI를 수정했다면 최소한 아래를 확인한다.
 반면 `.d-btn`은 `#deduceOpts`(추리)와 `#simActs`(사고 재현) **두 컨테이너**에 생성된다 —
 반드시 `#simActs .d-btn`처럼 컨테이너로 스코프해서 잡는다.
 
+`survey.html`(학급 설문 페이지)은 게임의 서브셋 폰트를 **재사용**한다 — 서브셋은
+index.html 의 문자만 담으므로, 설문 문구에 새 글자를 넣으면
+`python3 tools/verify-survey.py`의 cmap 대조(V7)가 실패한다. 그때는 글자를 피해서
+다시 쓰거나 `tools/build-fonts.sh`를 두 파일 기준으로 확장해 서브셋을 재생성한다.
+설문을 고쳤으면 verify-survey.py 전체(V1~V11)를 돌린다.
+
 ## Git
 
 - 작업 브랜치: `claude/gas-safety-game-judging-79br6h`
