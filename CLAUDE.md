@@ -79,7 +79,9 @@ UI를 수정했다면 최소한 아래를 확인한다.
 `scr-hub`×4 / `scr-room` / `scr-talk` / `scr-end`×2 / `scr-inspect` / `#notebook`)에
 13개가 깔려 있다. 사건별 `backLabel`(`"캠핑장으로"` / `"펜션으로"`)은 `scr-room`에만 적용되고,
 `scr-talk`의 `"인물 선택으로"`(인물 선택창 복귀)와 `scr-inspect`의 `"돌아가기"`는 정적
-텍스트다. 반드시 `#scr-room .btn`처럼 화면 단위로 범위를 좁혀서 잡는다.
+텍스트다. 허브의 `#talkMenuBtn`은 조사 화면에선 `"인물 심문"`, 인물 선택 중엔
+`"조사로 돌아가기"`(back)로 라벨이 바뀐다 — 텍스트가 아니라 id/위치로 잡는다.
+반드시 `#scr-room .btn`처럼 화면 단위로 범위를 좁혀서 잡는다.
 
 `.spot-btn`(`#spots`)과 `.q-btn`(`#talkQs`)은 각각 한 화면에만 생성되므로 이 문제가 없다.
 
