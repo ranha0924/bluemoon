@@ -752,6 +752,7 @@
         <div class="recap-src">출처 — 한국가스안전공사·행정안전부·질병관리청 발표 수칙·통계</div></div>
       <div id="endGrade"></div>
       <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center">
+        <button class="btn" id="certBtn" onclick="G.saveCert()"><i data-ico="award"></i>수사관 임명장</button>
         <button class="btn" onclick="G.backToLobby()"><i data-ico="folder"></i>다른 사건 파일</button>
         <button class="btn gold" onclick="location.reload()">처음부터 다시</button>
       </div>
@@ -878,6 +879,9 @@ const ICON = {
   // 자물쇠
   lock: SVG_OPEN + '<rect x="4.5" y="10.5" width="15" height="9.5" rx="1.6"/>'
     + '<path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"/><path d="M12 14.2v2.2"/></svg>',
+  // 메달 (임명장)
+  award: SVG_OPEN + '<circle cx="12" cy="9" r="5.5"/>'
+    + '<path d="M9.2 13.6L7.5 21l4.5-2.6L16.5 21l-1.7-7.4"/></svg>',
   // 서류철
   folder: SVG_OPEN + '<path d="M3.5 7h5.5l2 2.5h8.3a1.2 1.2 0 0 1 1.2 1.2v7.6a1.2 1.2 0 0 1-1.2'
     + ' 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"/></svg>',
@@ -2097,7 +2101,102 @@ const G = {
     // 인장(::before)이 읽을 등급 글자. 아래 표시 텍스트는 한 글자도 바꾸지 않는다.
     this.$('endGrade').dataset.grade = this.wrong===0?'S':this.wrong<=2?'A':'B';
     this.$('endGrade').textContent='최종 등급: '+grade+'  ·  오답 '+this.wrong+'회';
+    // 임명장 버튼을 원래 상태로 (직전 사건에서 '저장됨' 표시가 남지 않게)
+    const cb=this.$('certBtn');
+    cb.disabled=false; cb.innerHTML=ICON.award+'수사관 임명장';
     this.show('scr-end');
+  },
+
+  /* ----- 수사관 임명장 저장 -----
+     캔버스에 벡터와 텍스트만 그린다 — 로컬 이미지를 drawImage 하면 file:// 에서
+     캔버스가 오염되어 toBlob 이 SecurityError 로 실패하기 때문이다.
+     발급 명의는 게임 속 '한세인 탐정사무소'다. 실기관(한국가스안전공사 등)
+     명의를 찍지 않는다 — 실물 증서로 오인될 문서를 만들지 않는 원칙. */
+  async saveCert(){
+    const W=750, H=1060, S=2;
+    const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+    const x=cv.getContext('2d'); x.scale(S,S);
+    const g=this.wrong===0?'S':this.wrong<=2?'A':'B';
+    const gName=this.wrong===0?'가스안전 마스터':this.wrong<=2?'우수 탐정':'진실 도달';
+    try{ await Promise.all([
+      document.fonts.load('800 52px "Nanum Myeongjo"'),
+      document.fonts.load('700 20px "Nanum Myeongjo"'),
+      document.fonts.load('400 16px "Noto Sans KR"'),
+      document.fonts.load('700 16px "Noto Sans KR"') ]); }catch(e){}
+    const T='"Nanum Myeongjo", serif', B='"Noto Sans KR", "Apple SD Gothic Neo", sans-serif';
+    const INK='#2a241c', MUT='#6b5f4c', GLD='#8a6f3c', RED='#b5443c';
+    const ctr=(txt,f,c,y,ls)=>{ x.font=f; x.fillStyle=c; x.textAlign='center';
+      try{ x.letterSpacing=(ls||0)+'px'; }catch(e){}
+      x.fillText(txt,W/2,y);
+      try{ x.letterSpacing='0px'; }catch(e){} };
+    // 바탕 가죽 → 양피지 카드
+    const bg=x.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#241d15'); bg.addColorStop(1,'#12100e');
+    x.fillStyle=bg; x.fillRect(0,0,W,H);
+    const pp=x.createLinearGradient(0,34,0,H-34);
+    pp.addColorStop(0,'#f3ecda'); pp.addColorStop(.5,'#efe6d2'); pp.addColorStop(1,'#e7dcc2');
+    x.fillStyle=pp; x.fillRect(34,34,W-68,H-68);
+    // 이중 금테 + ㄱ자 코너 (게임 .dbl/.corners 재현)
+    x.strokeStyle=GLD; x.lineWidth=2;   x.strokeRect(50,50,W-100,H-100);
+    x.strokeStyle='#b09059'; x.lineWidth=1; x.strokeRect(58,58,W-116,H-116);
+    x.strokeStyle=GLD; x.lineWidth=3;
+    const L=26, cs=[[44,44,1,1],[W-44,44,-1,1],[44,H-44,1,-1],[W-44,H-44,-1,-1]];
+    cs.forEach(([cx,cy,dx,dy])=>{ x.beginPath();
+      x.moveTo(cx+dx*L,cy); x.lineTo(cx,cy); x.lineTo(cx,cy+dy*L); x.stroke(); });
+    // 머리 장식·표제
+    ctr('제 '+(new Date()).getFullYear()+'-'+this.C.no+'호', '400 12px '+B, MUT, 92, 2);
+    x.strokeStyle='#b09059'; x.lineWidth=1;
+    x.beginPath(); x.moveTo(210,124); x.lineTo(340,124); x.moveTo(410,124); x.lineTo(540,124); x.stroke();
+    ctr('✦','16px serif',GLD,130);
+    const tg=x.createLinearGradient(0,150,0,205);
+    tg.addColorStop(0,'#7a5f2c'); tg.addColorStop(.55,'#a8842e'); tg.addColorStop(1,'#6b511f');
+    ctr('수사관 임명장','800 52px '+T,tg,196,10);
+    ctr('터지기 전에 — 가스안전 사건파일','400 13px '+B,MUT,232,4);
+    // 사건·본문
+    ctr('CASE FILE #'+this.C.no+' 「'+this.C.name+'」  조사 종결','700 17px '+B,INK,300,1);
+    ctr('위 수사관은 이 사건의 진상을 증거로 밝히고,','400 16px '+B,INK,352);
+    ctr('그 과정에서 확인한 가스안전 수칙을 생활에서 지킬 것을','400 16px '+B,INK,384);
+    ctr('다짐하였기에 명예 수사관으로 임명합니다.','400 16px '+B,INK,416);
+    // 등급 인장 (엔딩 인장 재현 — 금 이중 링, -5도)
+    x.save(); x.translate(W/2,510); x.rotate(-5*Math.PI/180);
+    x.strokeStyle=GLD; x.lineWidth=3;
+    x.beginPath(); x.arc(0,0,56,0,7); x.stroke();
+    x.lineWidth=1.5; x.beginPath(); x.arc(0,0,49,0,7); x.stroke();
+    x.fillStyle='#7a5f2c'; x.font='800 46px '+T; x.textAlign='center'; x.textBaseline='middle';
+    x.fillText(g,0,3); x.restore(); x.textBaseline='alphabetic';
+    ctr('최종 등급  '+g+' — '+gName+'  ·  오답 '+this.wrong+'회','700 15px '+B,INK,608,1);
+    // 수칙 요약
+    x.strokeStyle='#c9b389'; x.lineWidth=1;
+    x.beginPath(); x.moveTo(120,646); x.lineTo(W-120,646); x.stroke();
+    ctr('오늘의 가스안전 수칙','700 19px '+T,'#5c4a28',684,6);
+    const rc=(this.C.ending.recap||[]).slice(0,5);
+    x.font='400 15.5px '+B; x.textAlign='center';
+    rc.forEach((t,i)=>{ x.fillStyle=GLD; x.fillText('◆',W/2-x.measureText(t).width/2-18,718+i*31);
+      x.fillStyle=INK; x.fillText(t,W/2,718+i*31); });
+    ctr('가스사고 신고 119  ·  가스안전 상담 1544-4500 (한국가스안전공사)','400 12.5px '+B,MUT,718+rc.length*31+16,1);
+    // 날짜·발급 명의·인장 (하단 금테 y=1002 안쪽에서 마무리)
+    const d=new Date();
+    ctr(d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일','700 17px '+T,INK,924,3);
+    ctr('한세인 탐정사무소','800 26px '+T,INK,966,8);
+    x.save(); x.translate(W/2+166,952); x.rotate(-10*Math.PI/180); x.globalAlpha=.82;
+    x.strokeStyle=RED; x.lineWidth=2.5;
+    x.beginPath(); x.arc(0,0,30,0,7); x.stroke();
+    x.fillStyle=RED; x.font='800 15px '+T; x.textAlign='center'; x.textBaseline='middle';
+    x.fillText('한세인',0,1); x.restore(); x.globalAlpha=1; x.textBaseline='alphabetic';
+    ctr('본 임명장은 게임 「터지기 전에」의 학습 완료 기념장입니다.','400 11px '+B,MUT,996,1);
+    // 저장 — toBlob 실패 시 dataURL 폴백. blob URL 은 file:// 에서도 동작한다.
+    const fname='터지기전에_임명장_CASE'+this.C.no+'_'+g+'.png';
+    const save=url=>{ const a=document.createElement('a'); a.href=url; a.download=fname;
+      document.body.appendChild(a); a.click(); a.remove(); };
+    if(cv.toBlob) cv.toBlob(bl=>{
+      if(bl){ const u=URL.createObjectURL(bl); save(u); setTimeout(()=>URL.revokeObjectURL(u),4000); }
+      else save(cv.toDataURL('image/png'));
+    },'image/png');
+    else save(cv.toDataURL('image/png'));
+    // 피드백은 버튼 라벨로 — 엔딩 화면에서 토스트를 띄우지 않는다(제목과 겹침 방지)
+    const btn=this.$('certBtn');
+    btn.disabled=true; btn.innerHTML=ICON.check+'저장됨!';
+    setTimeout(()=>{ btn.disabled=false; btn.innerHTML=ICON.award+'수사관 임명장'; },2200);
   }
 };
 G.init();

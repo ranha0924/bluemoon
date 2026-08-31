@@ -79,8 +79,8 @@ UI를 수정했다면 최소한 아래를 확인한다.
 
 `.screen`은 `display:none`으로 숨기기만 하고 DOM에서 제거하지 않는다. 그래서 **모든 화면의
 버튼이 항상 동시에 존재한다.** `class="btn"`은 8개 컨테이너(`scr-title` / `scr-lobby`×2 /
-`scr-hub`×4 / `scr-room` / `scr-talk` / `scr-end`×2 / `scr-inspect` / `#notebook`)에
-13개가 깔려 있다. 사건별 `backLabel`(`"캠핑장으로"` / `"펜션으로"`)은 `scr-room`에만 적용되고,
+`scr-hub`×4 / `scr-room` / `scr-talk` / `scr-end`×3 / `scr-inspect` / `#notebook`)에
+14개가 깔려 있다. 사건별 `backLabel`(`"캠핑장으로"` / `"펜션으로"`)은 `scr-room`에만 적용되고,
 `scr-talk`의 `"인물 선택으로"`(인물 선택창 복귀)와 `scr-inspect`의 `"돌아가기"`는 정적
 텍스트다. 허브의 `#talkMenuBtn`은 조사 화면에선 `"인물 심문"`, 인물 선택 중엔
 `"조사로 돌아가기"`(back)로 라벨이 바뀐다 — 텍스트가 아니라 id/위치로 잡는다.
