@@ -659,7 +659,7 @@
     <div class="dlg-box corners" onclick="G.nextLine()">
       <div class="dlg-name" id="dlgName"></div>
       <div class="dlg-text" id="dlgText"></div>
-      <div class="dlg-next">▼</div>
+      <div class="dlg-next">Enter ▼</div>
     </div>
   </div>
 
@@ -707,7 +707,7 @@
     <div class="talk-answer" id="talkAnswer" onclick="this.style.display='none'">
       <div class="dlg-name" id="ansName"></div>
       <div class="dlg-text" id="ansText"></div>
-      <div class="dlg-next">클릭하여 닫기</div>
+      <div class="dlg-next">클릭 또는 Enter로 닫기</div>
     </div>
   </div>
 
@@ -953,7 +953,48 @@ const SND = {
     return this.on;
   }
 };
-document.addEventListener('click', e=>{ if(e.target.closest('button')) SND.blip(); });
+// blur(): 마우스로 누른 버튼에 포커스가 남으면, 화면이 바뀐 뒤의 Enter/Space 가
+// 그 '숨은 버튼'을 네이티브 클릭하는 잠재 결함이 있다 — 클릭 직후 포커스를 푼다
+// (Tab 으로 잡은 포커스는 그대로라 키보드 접근성은 유지된다).
+document.addEventListener('click', e=>{
+  const b=e.target.closest('button');
+  if(b){ SND.blip(); b.blur(); }
+});
+
+/* ---------- 키보드 조작 ----------
+   마우스 없이도 전 과정을 진행할 수 있다.
+   Enter/Space 대화 진행 · 1~4 선택지(추리/사고 재현) · Esc 수첩/답변 닫기.
+   e.repeat 무시 — 키를 누르고 있어도 한 번만 발화한다. */
+document.addEventListener('keydown', e=>{
+  if(e.repeat||e.ctrlKey||e.metaKey||e.altKey) return;
+  const k=e.key;
+  const scr=document.querySelector('.screen.active'), id=scr?scr.id:null;
+  // 1) 수첩이 열려 있으면 닫기만 받는다
+  if(G.$('notebook').style.display==='flex'){
+    if(k==='Escape'||k==='Enter'||k===' '){ e.preventDefault(); G.closeNotebook(); }
+    return;
+  }
+  // 2) 심문 답변 패널이 떠 있으면 먼저 닫는다
+  const ans=G.$('talkAnswer');
+  if(id==='scr-talk'&&ans.style.display==='block'){
+    if(k==='Escape'||k==='Enter'||k===' '){ e.preventDefault(); ans.style.display='none'; }
+    return;
+  }
+  // 3) 대화 진행
+  if(k==='Enter'||k===' '){
+    if(id==='scr-dialog'){ e.preventDefault(); G.nextLine(); }
+    return;
+  }
+  // 4) 선택지 1~4 (추리·사고 재현) — 비활성 버튼은 무시(정답 연출 1.6초 대기 보호)
+  const n='1234'.indexOf(k);
+  if(n>=0){
+    const sel=id==='scr-deduce'?'#deduceOpts .d-btn':id==='scr-sim'?'#simActs .d-btn':null;
+    if(sel){
+      const b=document.querySelectorAll(sel)[n];
+      if(b&&!b.disabled){ e.preventDefault(); b.click(); }
+    }
+  }
+});
 
 /* ---------- 화면 맞춤 배율 ---------- */
 // #game 은 항상 1000x625 좌표계로 그려지고, 실제 표시 크기만 배율로 맞춘다.
