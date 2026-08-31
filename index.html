@@ -1232,8 +1232,12 @@ const INSPECT = {
   // T: 원통 두께(반지름 1 기준) / scF: 프레임 대비 배율 / shadowY: 그림자 낙하 거리
   // baseF·baseB: 앞·뒷면 밝기 기준값 / front: 앞면 무늬 종류 / lines: 뒷면 각인 [문구,y,크기]
   MODELS: {
-    can: { T:2.1, scF:0.20, shadowY:1.6, baseF:224, baseB:206, front:'nozzle',
-      lines:[['MFG 2023.05',-6,11],['BUTANE 220g',9,6.5]],
+    /* 제조일은 파열방지기능 의무화(2023년 제조분부터) '이전'이어야 c1 단서의
+       "파열방지기능 제품이었다면"이라는 전제와 모순되지 않는다. 2022.05 는
+       사장의 "3년 전 들여온 재고" · c7 "제조일 3년 초과" 와도 시간선이 맞는다. */
+    can: { T:3.2, scF:0.165, shadowY:1.9, baseF:224, baseB:206, front:'nozzle',
+      band:[0.24,0.85],
+      lines:[['MFG 2022.05',-6,11],['BUTANE 220g',9,6.5]],
       hintTurn:'드래그해서 캔을 돌려 바닥을 확인해 보세요',
       hintFound:'바닥에 새겨진 제조일 — 권장사용기간 3년이 지난 캔이다',
       stamp:'제조일 발견' },
@@ -1377,15 +1381,31 @@ const INSPECT = {
       quads.push({pts:[ringF[i],ringF[j],ringB[j],ringB[i]], n, mid});
     }
     quads.sort((a,b)=>b.mid-a.mid);
-    for(const q of quads){
-      if(q.n[2]>0.02) continue;                       // 뒤쪽 측면은 생략
-      const lit=Math.min(1,Math.max(0,-q.n[2]*0.55 - q.n[1]*0.5 + 0.25));
+    const vis=quads.filter(q=>q.n[2]<=0.02);          // 뒤쪽 측면은 생략
+    const litOf=q=>Math.min(1,Math.max(0,-q.n[2]*0.55 - q.n[1]*0.5 + 0.25));
+    for(const q of vis){
+      const lit=litOf(q);
       const t=Math.round(120+lit*115);
       const col='rgb('+t+','+(t-6)+','+(t-18)+')';
       this.path(q.pts);
       this.ctx.fillStyle=col; this.ctx.fill();
       // 조각을 같은 색으로 한 번 더 스트로크해 인접 조각 사이 실틈(줄무늬)을 덮는다
       this.ctx.lineWidth=1.2*this.px; this.ctx.strokeStyle=col; this.ctx.stroke();
+    }
+    // 라벨 밴드(band=[z비율 시작,끝], 모델 선택 필드): 민무늬 원통이 '흰 컵'으로
+    // 읽히는 것을 막는다. 몸통을 전부 칠한 '뒤에' 별도 패스로 그린다 — 한 루프에서
+    // 같이 그리면 이웃 조각의 기본색 스트로크가 밴드 가장자리를 덮어 줄무늬가 생긴다.
+    // (앞면을 향한 조각들은 볼록 원통이라 서로 겹치지 않으므로 2차 패스가 안전하다.)
+    if(this.M.band){
+      const [b1,b2]=this.M.band;
+      const lerp=(a,b,k)=>[a[0]+(b[0]-a[0])*k, a[1]+(b[1]-a[1])*k];
+      for(const q of vis){
+        const p=q.pts, sh=0.45+litOf(q)*0.55;
+        const sub=[lerp(p[0],p[3],b1), lerp(p[1],p[2],b1), lerp(p[1],p[2],b2), lerp(p[0],p[3],b2)];
+        const bc='rgb('+Math.round(198*sh)+','+Math.round(84*sh)+','+Math.round(40*sh)+')';
+        this.path(sub); this.ctx.fillStyle=bc; this.ctx.fill();
+        this.ctx.lineWidth=1.2*this.px; this.ctx.strokeStyle=bc; this.ctx.stroke();
+      }
     }
 
     if(farFirst) drawFace(true); else drawFace(false);
