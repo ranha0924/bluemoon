@@ -377,6 +377,8 @@
 
   /* ---------- 추리 ---------- */
   #scr-deduce { background:#14110d; align-items:center; justify-content:center; }
+  /* 우상단 도구 막대 — 재정비 대사("수첩을 훑자")가 추리 화면에서 실제로 실행 가능해야 한다 */
+  .deduce-top { position:absolute; top:12px; right:16px; z-index:6; display:flex; gap:8px; }
   /* 조서 카드 */
   .dossier { position:relative; width:88%; max-height:94%;
     display:flex; flex-direction:column; align-items:center; gap:12px;
@@ -828,6 +830,10 @@
 
   <!-- 추리 -->
   <div class="screen" id="scr-deduce">
+    <!-- 우상단 도구 — 조서(.dossier)는 flex 중앙정렬이라 일반 플로우에 넣으면 밀린다: absolute 로 띄운다 -->
+    <div class="deduce-top">
+      <button class="btn" id="dedNbBtn" onclick="G.openNotebook()"><i data-ico="book"></i>수첩</button>
+    </div>
     <div class="dossier corners">
       <h3 class="sec-head">— 추리 타임 —</h3>
       <div id="deduceProg"></div>
