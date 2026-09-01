@@ -448,6 +448,7 @@
   #simBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .sim-top { position:relative; z-index:2; padding:14px 20px; display:flex;
     justify-content:space-between; align-items:flex-start; }
+  .sim-top-r { display:flex; gap:10px; align-items:flex-start; }
   #simProg { display:inline-flex; align-items:center; font-family:var(--ff-title);
     font-size:10px; letter-spacing:.22em; color:#cfc3a6; border:1px solid rgba(200,165,92,.4);
     border-radius:3px; padding:3px 12px; transform:rotate(1.5deg); background:rgba(12,10,7,.72); }
@@ -833,6 +834,8 @@
     <!-- 우상단 도구 — 조서(.dossier)는 flex 중앙정렬이라 일반 플로우에 넣으면 밀린다: absolute 로 띄운다 -->
     <div class="deduce-top">
       <button class="btn" id="dedNbBtn" onclick="G.openNotebook()"><i data-ico="book"></i>수첩</button>
+      <!-- 부스에서 관람객이 중간에 떠났을 때의 이탈 동선 — 실수 방지로 두 번 눌러 확정 -->
+      <button class="btn back" id="dedLobbyBtn" onclick="G.lobby2press(this)">로비로</button>
     </div>
     <div class="dossier corners">
       <h3 class="sec-head">— 추리 타임 —</h3>
@@ -851,7 +854,11 @@
       <div id="simFocus"></div>
       <div class="sim-top">
         <div class="room-title" id="simTitle"></div>
-        <div id="simProg"></div>
+        <!-- 진행 스탬프와 이탈 버튼을 한 덩이로 — space-between 3자식이 되면 스탬프가 중앙으로 밀린다 -->
+        <div class="sim-top-r">
+          <div id="simProg"></div>
+          <button class="btn back" id="simLobbyBtn" onclick="G.lobby2press(this)">로비로</button>
+        </div>
       </div>
       <div id="simBrief"><span id="simBriefText"></span>
         <span class="sim-note">재현 실험 — 무엇을 골라도 등급과 촛불에는 영향이 없다</span></div>
@@ -1963,12 +1970,19 @@ const SIM = {
   finish(){
     if(this.finished) return; this.finished=true;
     SND.hissStop();
-    // 마지막 해설을 읽을 틈 → 성공 배너 → 진상 공개
-    setTimeout(()=>{
+    // 마지막 해설을 읽을 틈 → 성공 배너 → 진상 공개. 핸들은 abort 가 끊을 수 있게 남긴다.
+    this._t1=setTimeout(()=>{
       G.$('simBannerText').textContent=this.cfg.success||'조치 완료';
       G.$('simBanner').classList.add('on'); SND.ding();
-      setTimeout(()=>{ const cb=this.onEnd; this.onEnd=null; cb&&cb(); }, 1700);
+      this._t2=setTimeout(()=>{ const cb=this.onEnd; this.onEnd=null; cb&&cb(); }, 1700);
     }, 650);
+  },
+  /* 재현 중 로비 이탈용 — 배너 타이머·완료 콜백·누출음을 전부 끊는다.
+     idle 상태에서 불려도 no-op (허브·엔딩의 로비 버튼도 backToLobby 로 이 경로를 지난다). */
+  abort(){
+    clearTimeout(this._t1); clearTimeout(this._t2); this._t1=this._t2=null;
+    this.onEnd=null; this.finished=true;
+    SND.hissStop();
   }
 };
 
@@ -2103,7 +2117,29 @@ const G = {
       grid.appendChild(card);
     }
   },
+  /* ----- 추리·재현의 로비 이탈 (2press 확정) -----
+     부스에서 관람객이 중간에 떠나면 운영자가 다음 사람을 위해 처음으로 되돌릴 길이
+     필요하다. 실수로 진행을 날리지 않게 첫 클릭은 장전(3초 유지)만 하고,
+     3초 안의 두 번째 클릭이 실제로 로비로 나간다. */
+  lobby2press(btn){
+    if(btn._armT){ this.backToLobby(); return; }
+    btn._orig=btn.textContent;
+    btn.classList.add('gold');
+    btn.textContent='한 번 더 누르면 로비로';
+    btn._armT=setTimeout(()=>this.disarmLobbyBtn(btn), 3000);
+  },
+  disarmLobbyBtn(btn){
+    if(!btn||!btn._armT) return;
+    clearTimeout(btn._armT); btn._armT=null;
+    btn.classList.remove('gold'); btn.textContent=btn._orig;
+  },
+  disarmLobbyBtns(){ this.disarmLobbyBtn(this.$('dedLobbyBtn')); this.disarmLobbyBtn(this.$('simLobbyBtn')); },
   backToLobby(){
+    // 로비로 나간 뒤 추리 1.6초 정답 연출·재현 배너 타이머가 화면을 탈취하지 않게
+    // 이 단일 관문에서 전부 끊는다 (허브·엔딩의 로비 버튼도 이 경로를 지난다 — idle 이면 no-op).
+    clearTimeout(this._dedT); this._dedT=null;
+    SIM.abort();
+    this.disarmLobbyBtns();
     this.closeNotebook();
     this.$('talkAnswer').style.display='none';
     this.show('scr-lobby');
@@ -2113,6 +2149,7 @@ const G = {
     this.caseKey=key; this.C=CASES[key];
     this.clues=new Set(); this.testis=new Set(); this.asked=new Set(); this.inspected=new Set();
     this.hearts=3; this.wrong=0; this.deduceIdx=0; this.currentRoom=null; this._wrongSel={};
+    this.disarmLobbyBtns();   // 장전 상태로 로비를 오간 경우 라벨 누수 방지
     this.closeNotebook();
     this.$('talkAnswer').style.display='none';
     this.$('hubTitle').textContent=this.C.hubTitle;
@@ -2336,7 +2373,9 @@ const G = {
       btn.classList.add('right');
       fb.innerHTML='<span class="fb-ok">'+ICON.check+'</span><span>'+HL(d.fb[i])+'</span>';
       document.querySelectorAll('.d-btn').forEach(b=>b.disabled=true);
-      setTimeout(()=>{
+      // 핸들을 남긴다 — 연출 중 로비 이탈 시 backToLobby 가 끊어야 한다.
+      this._dedT=setTimeout(()=>{
+        this._dedT=null;
         this.deduceIdx++;
         // 정답 후 1.6초 대기는 빠른 모드에서도 유지한다 — 형광펜 스태거(위 CSS)가 1.6초 전제다.
         if(this.deduceIdx>=this.DQ.length) this.finishDeduce();
