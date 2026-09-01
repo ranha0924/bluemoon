@@ -47,6 +47,9 @@
 - **이미지는 `IMG`(로컬 `assets/*.webp`) → `CDN`(원본 PNG) 순으로 폴백한다.**
   이미지를 추가할 때는 두 객체에 같은 key를 넣고, 화면에 붙는 `<img>`에는 `data-k`를 준다.
 - 효과음은 WebAudio로 직접 합성한다. 사운드 파일을 추가하지 않는다.
+- **학급 설문(`#survey`)은 `#fit` 바깥의 전면 고정 오버레이다** (rotateHint 계열,
+  네이티브 크기·자체 스크롤). `#game` 안으로 넣으면 배율에 갇혀 폰에서 입력이 불가해진다.
+  열려 있는 동안 `#fit`은 `inert`, 게임 키 입력은 차단(Esc만 닫기)이 불변식이다.
 
 ## 검증 방법
 
@@ -86,9 +89,9 @@ UI를 수정했다면 최소한 아래를 확인한다.
    띄우면 상단에 붙은 스포트라이트 링(c4 등)을 가리기 때문. 대화 중에 뜨면 회귀다.
 
 `.screen`은 `display:none`으로 숨기기만 하고 DOM에서 제거하지 않는다. 그래서 **모든 화면의
-버튼이 항상 동시에 존재한다.** `class="btn"`은 8개 컨테이너(`scr-title` / `scr-lobby`×2 /
+버튼이 항상 동시에 존재한다.** `class="btn"`은 8개 컨테이너(`scr-title` / `scr-lobby`×3 /
 `scr-hub`×5 / `scr-room` / `scr-talk` / `scr-end`×3 / `scr-inspect` / `#notebook`)에
-15개가 깔려 있다. 사건별 `backLabel`(`"캠핑장으로"` / `"펜션으로"`)은 `scr-room`에만 적용되고,
+16개가 깔려 있다(설문 오버레이의 버튼은 `.sv-btn`으로 별도). 사건별 `backLabel`(`"캠핑장으로"` / `"펜션으로"`)은 `scr-room`에만 적용되고,
 `scr-talk`의 `"인물 선택으로"`(인물 선택창 복귀), `scr-inspect`의 `"돌아가기"`,
 허브의 `"로비로"`(사건 도중 로비 복귀 — 재진입 시 초기화)는 정적
 텍스트다. 허브의 `#talkMenuBtn`은 조사 화면에선 `"인물 심문"`, 인물 선택 중엔
@@ -99,11 +102,11 @@ UI를 수정했다면 최소한 아래를 확인한다.
 반면 `.d-btn`은 `#deduceOpts`(추리)와 `#simActs`(사고 재현) **두 컨테이너**에 생성된다 —
 반드시 `#simActs .d-btn`처럼 컨테이너로 스코프해서 잡는다.
 
-`survey.html`(학급 설문 페이지)은 게임의 서브셋 폰트를 **재사용**한다 — 서브셋은
-index.html 의 문자만 담으므로, 설문 문구에 새 글자를 넣으면
-`python3 tools/verify-survey.py`의 cmap 대조(V7)가 실패한다. 그때는 글자를 피해서
-다시 쓰거나 `tools/build-fonts.sh`를 두 파일 기준으로 확장해 서브셋을 재생성한다.
-설문을 고쳤으면 verify-survey.py 전체(V1~V11)를 돌린다.
+학급 설문은 index.html 에 내장된 `#survey` 오버레이다(별도 페이지 없음) — 진입은
+로비 [학급 설문] 버튼과 `?survey=pre|post|1` 딥링크. 설문 문구도 index.html 의
+일부이므로 새 글자를 넣으면 `tools/build-fonts.sh`로 서브셋을 재생성한다(일반 규칙).
+℃ 처럼 명조 원본에 없는 글자는 본문(Noto) 문맥에서만 쓴다.
+설문을 고쳤으면 `python3 tools/verify-survey.py` 전체(V1~V12)를 돌린다.
 
 ## Git
 
