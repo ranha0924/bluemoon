@@ -971,12 +971,16 @@ const SND = {
   }
 };
 // blur(): 마우스로 누른 버튼에 포커스가 남으면, 화면이 바뀐 뒤의 Enter/Space 가
-// 그 '숨은 버튼'을 네이티브 클릭하는 잠재 결함이 있다 — 클릭 직후 포커스를 푼다
+// 그 '숨은 버튼'을 네이티브 클릭하는 잠재 결함이 있다 — 캡처 단계에서 버튼을 잡아
+// 활성화가 끝난 뒤(setTimeout 0) 포커스를 푼다. 버블 단계에서 잡으면 핸들러가
+// 버튼 innerHTML 을 교체하는 경우(빠른 조사 토글·인물 심문·사운드) 클릭 타깃이
+// DOM 에서 분리되어 closest 가 버튼을 놓치고, blur 가 안 걸린 버튼을 직후의
+// Enter/Space 가 유령 재클릭한다 — 실측으로 확인된 결함.
 // (Tab 으로 잡은 포커스는 그대로라 키보드 접근성은 유지된다).
 document.addEventListener('click', e=>{
   const b=e.target.closest('button');
-  if(b){ SND.blip(); b.blur(); }
-});
+  if(b){ SND.blip(); setTimeout(()=>b.blur(), 0); }
+}, true);
 
 /* ---------- 키보드 조작 ----------
    마우스 없이도 전 과정을 진행할 수 있다.
@@ -1477,6 +1481,7 @@ const INSPECT = {
     this.ctx=this.cv.getContext('2d');
     // 매번 초기 각도로 되돌린다 (각인은 다시 찾아야 도장이 뜬다)
     this.rx=-0.32; this.ry=0.55; this.auto=true; this.drag=false; this.found=false;
+    this.autoT=0;   // 자동 스윙 위상도 리셋 — 재진입 시 같은 모션에서 시작
     document.getElementById('inspectHint').textContent=this.M.hintTurn;
     document.getElementById('inspectStamp').textContent=this.M.stamp;
     this.resize();
@@ -1633,8 +1638,9 @@ const INSPECT = {
 
     if(farFirst) drawFace(true); else drawFace(false);
 
-    // 각인 발견 판정: 뒷면이 충분히 정면을 향했을 때
-    if(!this.found && backN[2] < -0.55){
+    // 각인 발견 판정: 뒷면이 충분히 정면을 향했을 때.
+    // !auto 방어 — 스윙 파라미터가 나중에 바뀌어도 '발견은 사용자 조작으로만'을 보증한다.
+    if(!this.found && !this.auto && backN[2] < -0.55){
       this.found=true;
       SND.ding(); flashGold();
       document.getElementById('inspectStamp').classList.add('on');
@@ -1642,7 +1648,13 @@ const INSPECT = {
     }
   },
   loop(){
-    if(this.auto) this.ry+=0.006;
+    // 자동 회전은 초기각 ±0.42 사인 스윙으로 제한한다 — 한 바퀴 돌리면
+    // 무입력 5~6초 만에 뒷면 판정각에 도달해 '발견'이 저절로 끝나 버린다
+    // (독립 QA 실측). auto 중 rx=-0.32 고정이므로 backN[2]=cos(ry)·cos(rx) 는
+    // 0.536~0.941 범위 — 판정 임계 -0.55 에 절대 못 미친다. 발견은 드래그나
+    // 방향키, 즉 사용자 조작으로만 가능하다. 프레임 기반 위상(autoT)은 기존
+    // ry+=0.006/frame 관례를 따른다 — 고주사율에선 스윙이 빨라질 뿐 범위는 불변.
+    if(this.auto){ this.autoT+=1; this.ry=0.55+Math.sin(this.autoT*0.012)*0.42; }
     this.render();
     this.raf=requestAnimationFrame(()=>this.loop());
   },
@@ -1941,14 +1953,14 @@ const G = {
       b.innerHTML=ICON.mag+'<span>'+s.label+'</span>';
       b.onclick=()=>{
         const c=this.C.CLUES[s.clue];
-        if(!this.clues.has(s.clue)){
-          this.clues.add(s.clue);
-          SND.ding();
-          this.toast(ICON.mag+'<span>단서 발견 — '+c.name+'</span>');
-          b.classList.add('done');
-        }
+        const isNew=!this.clues.has(s.clue);
+        if(isNew){ this.clues.add(s.clue); SND.ding(); b.classList.add('done'); }
+        // '단서 발견' 토스트는 대화가 끝나 방으로 돌아온 뒤에 띄운다 — 대화 화면에서
+        // 띄우면 토스트 밴드(y 38..85)가 화면 상단에 붙은 스포트라이트 링(c4 등)을
+        // 가린다(실측 8×57px). 대화 중 발견 피드백은 ding + 제목 칩 '단서 · 이름'이 맡는다.
         this.playDialog([{name:'단서 · '+c.name, text:(this.fast&&c.fast)?c.fast:c.desc, img:r.img, focus:s.focus}],
-          ()=>this.openRoom(key));
+          ()=>{ this.openRoom(key);
+                if(isNew) this.toast(ICON.mag+'<span>단서 발견 — '+c.name+'</span>'); });
       };
       sp.appendChild(b);
     });
