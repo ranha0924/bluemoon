@@ -33,6 +33,8 @@
 | `assets/fonts/` | 서브셋 웹폰트 4벌(woff2, 총 ~0.4MB) + SIL OFL 1.1 라이선스 원문 |
 | `tools/build-fonts.sh` | 시나리오 텍스트 변경 시 서브셋 재생성 스크립트 |
 | `tools/verify-survey.py` | 내장 학급 설문 자동 검증(진입·딥링크·채점·무유출·키 격리·폰트 커버리지 등 V1~V12) |
+| `video/before-it-blows_1min_v6.mp4` | 공모전 제출용 1분 실행 영상(57초 · 1080p · 자체 합성 음향) |
+| `submission/application_form.pdf` | 참가 신청서(A4 3쪽 — 양식·출품작 이미지·상세 설명) |
 | `submission/class_survey.pdf` | 같은 설문의 인쇄용(A4 3쪽 — 사전·사후·교사용) |
 
 이미지는 로컬 `assets/`를 먼저 쓰고, 파일이 없으면 원본 Higgsfield CDN(PNG)으로 자동 폴백한다.
