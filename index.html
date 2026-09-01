@@ -1681,20 +1681,27 @@ const CASES = { case1:CASE1, case2:CASE2 };
 
 /* ---------- 3D 증거 조사 (canvas 2D 직접 투영, 외부 라이브러리 없음) ----------
    증거물을 원통으로 모델링한다. 뒤집으면 뒷면 각인/라벨이 드러난다.
-   시점은 -z 쪽. 즉 회전된 법선의 z 가 음수인 면이 보인다.
+   카메라는 뷰 공간 (0,0,-F), 투영 배율 k=F/(F+z). 가시 판정은 원근 기준 —
+   측면 조각은 dot(n, p-cam)=R+F·n[2] 가 조각 위 어느 점에서나 같으므로(법선⊥축)
+   상수 임계값으로 정확히 자를 수 있다.
    오브젝트별 차이(두께 T·배율 scF·앞면 무늬·각인 문구)는 MODELS 표에만 둔다 —
    회전·투영·발견 판정 로직은 모델과 무관하게 그대로다. */
 const INSPECT = {
   cv:null, ctx:null, raf:0, px:1,
   rx:-0.32, ry:0.55, drag:false, lx:0, ly:0, auto:true, found:false,
   SEG:56, R:1, M:null,
+  // 원근 거리(카메라 z=-F). 4.2 였을 때 T=3.2 캔의 근캡:원캡 배율이 2.23:1 이라
+  // 원통이 원뿔(종이컵)처럼 보였다 — 12 에서 1.31:1 로 제품컷 수준의 원근만 남는다.
+  F:12,
   // T: 원통 두께(반지름 1 기준) / scF: 프레임 대비 배율 / shadowY: 그림자 낙하 거리
   // baseF·baseB: 앞·뒷면 밝기 기준값 / front: 앞면 무늬 종류 / lines: 뒷면 각인 [문구,y,크기]
   MODELS: {
     /* 제조일은 파열방지기능 의무화(2023년 제조분부터) '이전'이어야 c1 단서의
        "파열방지기능 제품이었다면"이라는 전제와 모순되지 않는다. 2022.05 는
        사장의 "3년 전 들여온 재고" · c7 "제조일 3년 초과" 와도 시간선이 맞는다. */
-    can: { T:3.2, scF:0.165, shadowY:1.9, baseF:224, baseB:206, front:'nozzle',
+    /* scF 는 양 캡 평균 투영 배율을 F 변경 전과 같게 맞춘 값 —
+       scF_new = scF_old × (1-(T/2F)²)/(1-(T/2·4.2)²). alarm 은 얇아 보정이 1.001 배라 유지. */
+    can: { T:3.2, scF:0.19, shadowY:1.9, baseF:224, baseB:206, front:'nozzle',
       band:[0.24,0.85],
       lines:[['MFG 2022.05',-6,11],['BUTANE 220g',9,6.5]],
       hintTurn:'드래그해서 캔을 돌려 바닥을 확인해 보세요',
@@ -1727,7 +1734,7 @@ const INSPECT = {
     return [x1, y*c-z1*s, y*s+z1*c];
   },
   proj(p){
-    const f=4.2, k=f/(f+p[2]);
+    const f=this.F, k=f/(f+p[2]);
     return [this.cx+p[0]*this.sc*k, this.cy+p[1]*this.sc*k];
   },
   ring(zLocal){
@@ -1824,7 +1831,7 @@ const INSPECT = {
     const drawFace=(back)=>{
       const pts=back?ringB:ringF, n=back?backN:frontN;
       this.face(pts, n[2], back);
-      if(n[2]<0){                             // 보이는 면에만 디테일
+      if(n[2] < -T/(2*this.F)){               // 보이는 면에만 디테일 (원근 기준: dot(n,c-cam)=T/2+F·n[2]<0)
         if(back) this.engraving(T/2);
         else this.frontDetail(-T/2);
       }
@@ -1841,7 +1848,8 @@ const INSPECT = {
       quads.push({pts:[ringF[i],ringF[j],ringB[j],ringB[i]], n, mid});
     }
     quads.sort((a,b)=>b.mid-a.mid);
-    const vis=quads.filter(q=>q.n[2]<=0.02);          // 뒤쪽 측면은 생략
+    // 뒤쪽 측면 생략 — 원근 정확식: dot(n,p-cam)=R+F·n[2] ≤ ε (0.02 는 실루엣 봉합 여유)
+    const vis=quads.filter(q=>q.n[2]<=0.02-this.R/this.F);
     const litOf=q=>Math.min(1,Math.max(0,-q.n[2]*0.55 - q.n[1]*0.5 + 0.25));
     for(const q of vis){
       const lit=litOf(q);
@@ -1855,7 +1863,8 @@ const INSPECT = {
     // 라벨 밴드(band=[z비율 시작,끝], 모델 선택 필드): 민무늬 원통이 '흰 컵'으로
     // 읽히는 것을 막는다. 몸통을 전부 칠한 '뒤에' 별도 패스로 그린다 — 한 루프에서
     // 같이 그리면 이웃 조각의 기본색 스트로크가 밴드 가장자리를 덮어 줄무늬가 생긴다.
-    // (앞면을 향한 조각들은 볼록 원통이라 서로 겹치지 않으므로 2차 패스가 안전하다.)
+    // (카메라를 향한 조각들만 vis 에 남으므로 — 볼록체에서 한 시선은 앞면 조각을
+    //  최대 한 번만 지난다 — 2차 패스가 안전하다.)
     if(this.M.band){
       const [b1,b2]=this.M.band;
       const lerp=(a,b,k)=>[a[0]+(b[0]-a[0])*k, a[1]+(b[1]-a[1])*k];
