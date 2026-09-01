@@ -647,7 +647,7 @@
       <div class="title-bottom">
         <button class="btn gold" style="font-size:1.1rem; padding:14px 46px" onclick="G.show('scr-lobby')">사건 파일 열기</button>
         <div style="color:#a99f8a; font-size:.82rem">두 건의 가스사고 파일이 탐정을 기다리고 있다</div>
-        <div style="color:#7e7462; font-size:.66rem; letter-spacing:.08em; line-height:1.9">한 사건 표준 5~10분 · 빠른 조사 모드 3~4분 · 태블릿/PC 화면 권장<br>실제 가스안전 수칙과 통계를 바탕으로 제작되었습니다</div>
+        <div style="color:#7e7462; font-size:.66rem; letter-spacing:.08em; line-height:1.9">한 사건 표준 5~10분 · 빠른 조사 모드 4~5분 · 태블릿/PC 화면 권장<br>실제 가스안전 수칙과 통계를 바탕으로 제작되었습니다</div>
       </div>
       <div class="ver">ver 4.1</div>
     </div>
@@ -695,6 +695,8 @@
       <button class="btn" onclick="G.openNotebook()"><i data-ico="book"></i>수첩</button>
       <button class="btn gold" id="deduceBtn" onclick="G.tryDeduce()"><i data-ico="scales"></i>추리 시작</button>
       <button class="btn" id="sndBtn" onclick="this.innerHTML=SND.toggle()?ICON.sndOn:ICON.sndOff"><i data-ico="sndOn"></i></button>
+      <!-- 사건 도중 로비 복귀(전시에서 사건을 잘못 골랐을 때) — 재진입 시 startCase 가 초기화한다 -->
+      <button class="btn back" onclick="G.backToLobby()">로비로</button>
     </div>
   </div>
 
@@ -971,12 +973,16 @@ const SND = {
   }
 };
 // blur(): 마우스로 누른 버튼에 포커스가 남으면, 화면이 바뀐 뒤의 Enter/Space 가
-// 그 '숨은 버튼'을 네이티브 클릭하는 잠재 결함이 있다 — 클릭 직후 포커스를 푼다
+// 그 '숨은 버튼'을 네이티브 클릭하는 잠재 결함이 있다 — 캡처 단계에서 버튼을 잡아
+// 활성화가 끝난 뒤(setTimeout 0) 포커스를 푼다. 버블 단계에서 잡으면 핸들러가
+// 버튼 innerHTML 을 교체하는 경우(빠른 조사 토글·인물 심문·사운드) 클릭 타깃이
+// DOM 에서 분리되어 closest 가 버튼을 놓치고, blur 가 안 걸린 버튼을 직후의
+// Enter/Space 가 유령 재클릭한다 — 실측으로 확인된 결함.
 // (Tab 으로 잡은 포커스는 그대로라 키보드 접근성은 유지된다).
 document.addEventListener('click', e=>{
   const b=e.target.closest('button');
-  if(b){ SND.blip(); b.blur(); }
-});
+  if(b){ SND.blip(); setTimeout(()=>b.blur(), 0); }
+}, true);
 
 /* ---------- 키보드 조작 ----------
    마우스 없이도 전 과정을 진행할 수 있다.
@@ -1267,18 +1273,18 @@ const CASE2 = {
   /* ---------- 단서 ---------- */
   CLUES: {
     /* fast: 빠른 조사 모드용 1문장 요약. 수첩에는 항상 전체 desc 가 실린다. */
-    c1:{ name:"이탈된 배기통", desc:"보일러 배기통 연결부가 빠져 틈이 벌어져 있다. 최근 5년 가스보일러 사고 26건 중 20건이 [[배기통 이탈 등 시설 문제]] — 보일러 CO중독 사고의 [[사망률은 일반 가스사고의 6.75배]]다.",
+    c1:{ name:"이탈된 배기통", desc:"보일러 배기통 연결부가 빠져 틈이 벌어져 있다. 최근 5년(2016~2020) 가스보일러 사고 26건 중 20건이 [[배기통 이탈 등 시설 문제]] — 보일러 CO중독 사고의 [[사망률은 일반 가스사고의 6.75배]]다.",
       fast:"배기통 연결부가 빠져 틈이 벌어졌다 — 보일러 사고의 단골 원인인 [[배기통 이탈]]이다." },
     c2:{ name:"찌그러진 연통", desc:"지붕에서 떨어진 눈덩이에 연통 끝이 눌려 있다. 배기통 점검 3종 — [[이탈·찌그러짐·이물질]] — 폭설 뒤엔 반드시 연통부터 살펴야 한다.",
       fast:"지붕 눈덩이에 눌려 찌그러진 연통 — 점검 3종은 [[이탈·찌그러짐·이물질]]이다." },
     c3:{ name:"연통 속 새 둥지", desc:"연통 안에 마른 나뭇가지가 가득하다. 막힌 연통은 [[배기가스를 실내로 되돌린다]] — 점검 3종의 마지막, 내부 이물질이다.",
       fast:"연통을 가득 막은 새 둥지 — 막힌 연통은 [[배기가스를 실내로 되돌린다]]." },
-    c4:{ name:"침묵한 CO경보기", desc:"천장 바로 아래 벽에 달린 일산화탄소 경보기. 2020년 8월부터 신규 보일러 시설에 설치 의무 — [[벽에 달 때는 천장에서 15cm]], [[천장에 달 때는 벽에서 30cm]] 띄운다. 그런데 왜 울리지 않았을까.",
+    c4:{ name:"침묵한 CO경보기", desc:"천장 바로 아래 벽에 달린 일산화탄소 경보기. 2020년 8월부터 새 보일러 시설에 의무, 손님이 묵는 숙박업소(펜션)는 기존 시설도 의무다 — [[벽에 달 때는 천장에서 15cm]], [[천장에 달 때는 벽에서 30cm]] 띄운다. 그런데 왜 울리지 않았을까.",
       fast:"침묵한 CO경보기 — [[벽엔 천장에서 15cm]], [[천장엔 벽에서 30cm]] 띄워 단다. 왜 안 울렸을까." },
     c5:{ name:"노란 불꽃", desc:"레인지 불꽃이 노랗게 흔들린다. [[파란 불꽃이 정상]] — [[노랗거나 붉은 불꽃은 불완전연소]], 곧 일산화탄소가 만들어지고 있다는 신호다.",
       fast:"노랗게 흔들리는 레인지 불꽃 — [[노랗거나 붉은 불꽃은 불완전연소]] 신호다. [[파란 불꽃이 정상]]." },
-    c6:{ name:"김 서린 닫힌 창", desc:"한파에 창을 꼭 닫은 채 밤을 났다 — 유리에 김이 뿌옇게 서려 물방울이 맺혔다. 겨울에도 [[최소 2시간마다 환기]]가 원칙이다. 꽉 닫힌 방은 중독의 공범이다.",
-      fast:"김이 서리도록 꽉 닫힌 창 — 겨울에도 [[최소 2시간마다 환기]]가 원칙이다." },
+    c6:{ name:"김 서린 닫힌 창", desc:"한파에 창을 꼭 닫은 채 밤을 났다 — 유리에 김이 뿌옇게 서려 물방울이 맺혔다. 겨울에도 [[2~3시간마다 환기]]가 원칙이다. 꽉 닫힌 방은 중독의 공범이다.",
+      fast:"김이 서리도록 꽉 닫힌 창 — 겨울에도 [[2~3시간마다 환기]]가 원칙이다." },
     c7:{ name:"보류된 점검 신청서", desc:"찬장 서랍 깊숙이 치워져 있던 관리인의 신청서 — '배기통 노후, 교체 요망'. 사장 확인 칸엔 '내년 예산에서'라는 메모뿐이다. 가스보일러는 [[1년 1회 이상 전문가 점검]]이 원칙이다.",
       fast:"서랍 깊숙이 보류된 점검 신청서 — 가스보일러는 [[1년 1회 이상 전문가 점검]]이 원칙이다." },
     c8:{ name:"낡은 보일러 명판", desc:"보일러에 붙은 정보판(명판)의 설치 연도는 12년 전. 보일러 [[권장사용기간은 10년]]이다 — 수명을 넘긴 기계일수록 해마다 점검이 절실하다.",
@@ -1365,7 +1371,7 @@ const CASE2 = {
     { name:"한세인", text:"그리고 온수철 씨 — 당신은 용의자가 아니라 이 사건의 구조자입니다. 냄새 없는 두통에서 일산화탄소를 의심하고 모두를 깨웠으니까요.", pt:"keeper", img:"boilerroom" },
     { name:"온수철", text:"…보일러 일 30년에 배운 건 하나요. 보일러는 정직하다는 것. 게으른 건 언제나 사람 쪽이지. (그가 처음으로 길게 말했다)", pt:"keeper", img:"boilerroom" },
     { name:"정확한", text:"가스안전 조사관 정확한입니다. 가스보일러 CO중독 사고는 [[사망률이 일반 가스사고의 6.75배]] — 여러분은 운이 좋았습니다. 아니, 좋은 이웃을 뒀습니다.", pt:"inspector", img:"cover2" },
-    { name:"한세인", text:"[[경보기는 5년마다, 점검은 1년마다, 환기는 2시간마다]]. — 보이지 않는 손님을 막는 것은, 보이는 습관들이다.", pt:"detective", img:"end2" }
+    { name:"한세인", text:"[[경보기는 5년마다, 점검은 1년마다, 환기는 2~3시간마다]]. — 보이지 않는 손님을 막는 것은, 보이는 습관들이다.", pt:"detective", img:"end2" }
   ],
 
   /* ---------- 추리 문항 ---------- */
@@ -1385,13 +1391,13 @@ const CASE2 = {
     { q:"Q3. CO경보기가 침묵한 이유는?",
       opts:["수명 초과에 건전지까지 빠져 있었다","애초에 설치되지 않았다","일산화탄소 농도가 낮아서","경보기는 원래 CO를 못 잡는다"], ans:0,
       fb:["정답. 교체주기 5년을 넘긴 경보기가 삑삑대자 건전지를 뽑았다 — [[경보음을 끄는 순간 안전도 꺼진다]].",
-          "설치는 돼 있었다. 2020년 8월부터 신규 보일러 시설엔 의무다.",
+          "설치는 돼 있었다. 새 시설은 2020년 8월부터 의무 — 손님이 묵는 숙박업소는 기존 시설도 의무다.",
           "사람이 쓰러질 농도였다 — 정상 경보기라면 진작 울렸다.",
           "일산화탄소 감지가 바로 CO경보기의 존재 이유다."] },
     { q:"Q4. 이 사고를 막을 수 있었던 예방책은?",
       opts:["향초를 피워 냄새를 채운다","창문을 더 단단히 닫는다","연 1회 점검과 경보기 관리","보일러를 더 세게 돌린다"], ans:2,
       fb:["향은 일산화탄소를 못 막는다. 무취의 적은 기계(경보기)로 잡는 것이다.",
-          "꽉 닫아두면 오히려 위험하다. 한파에도 2시간마다 환기가 원칙이다.",
+          "꽉 닫아두면 오히려 위험하다. 한파에도 2~3시간마다 환기가 원칙이다.",
           "정답. 보일러는 [[1년 1회 이상 점검]], 경보기는 [[5년마다 교체]], [[울리면 끄지 말 것]] — 세 가지면 충분했다.",
           "배기가 무너진 보일러를 세게 돌리면 일산화탄소만 늘어난다."] }
   ],
@@ -1406,7 +1412,7 @@ const CASE2 = {
   fastReveal:[
     { name:"한세인", text:"범인의 이름은 [[일산화탄소]]. 색도 냄새도 없이, 피 속에서 산소의 자리를 먼저 차지하는 보이지 않는 손님입니다.", pt:"detective", img:"guestroom" },
     { name:"한세인", text:"침입 경로는 배기통 — [[이탈·찌그러짐·막힘]] 3종이 전부 무너졌습니다. 수명 지난 경보기는 건전지마저 빠져 있었고, 온수철 씨는 용의자가 아니라 모두를 깨운 구조자였죠.", pt:"keeper", img:"boilerroom" },
-    { name:"한세인", text:"[[경보기는 5년마다, 점검은 1년마다, 환기는 2시간마다]] — 보이지 않는 손님은 보이는 습관이 막는다.", pt:"detective", img:"end2" }
+    { name:"한세인", text:"[[경보기는 5년마다, 점검은 1년마다, 환기는 2~3시간마다]] — 보이지 않는 손님은 보이는 습관이 막는다.", pt:"detective", img:"end2" }
   ],
 
   /* ---------- 사고 재현 — 전수행형: ok 조치 3개를 모두 수행해야 한다 ---------- */
@@ -1435,7 +1441,7 @@ const CASE2 = {
       "배기통 — 이탈·찌그러짐·막힘 점검",
       "보일러 점검은 1년에 1회 이상",
       "경보기 교체는 5년마다, 끄지 말 것",
-      "한파에도 2시간마다 환기",
+      "한파에도 2~3시간마다 환기",
       "노란 불꽃은 불완전연소 경고"
     ] }
 };
@@ -1477,6 +1483,7 @@ const INSPECT = {
     this.ctx=this.cv.getContext('2d');
     // 매번 초기 각도로 되돌린다 (각인은 다시 찾아야 도장이 뜬다)
     this.rx=-0.32; this.ry=0.55; this.auto=true; this.drag=false; this.found=false;
+    this.autoT=0;   // 자동 스윙 위상도 리셋 — 재진입 시 같은 모션에서 시작
     document.getElementById('inspectHint').textContent=this.M.hintTurn;
     document.getElementById('inspectStamp').textContent=this.M.stamp;
     this.resize();
@@ -1633,8 +1640,9 @@ const INSPECT = {
 
     if(farFirst) drawFace(true); else drawFace(false);
 
-    // 각인 발견 판정: 뒷면이 충분히 정면을 향했을 때
-    if(!this.found && backN[2] < -0.55){
+    // 각인 발견 판정: 뒷면이 충분히 정면을 향했을 때.
+    // !auto 방어 — 스윙 파라미터가 나중에 바뀌어도 '발견은 사용자 조작으로만'을 보증한다.
+    if(!this.found && !this.auto && backN[2] < -0.55){
       this.found=true;
       SND.ding(); flashGold();
       document.getElementById('inspectStamp').classList.add('on');
@@ -1642,7 +1650,13 @@ const INSPECT = {
     }
   },
   loop(){
-    if(this.auto) this.ry+=0.006;
+    // 자동 회전은 초기각 ±0.42 사인 스윙으로 제한한다 — 한 바퀴 돌리면
+    // 무입력 5~6초 만에 뒷면 판정각에 도달해 '발견'이 저절로 끝나 버린다
+    // (독립 QA 실측). auto 중 rx=-0.32 고정이므로 backN[2]=cos(ry)·cos(rx) 는
+    // 0.536~0.941 범위 — 판정 임계 -0.55 에 절대 못 미친다. 발견은 드래그나
+    // 방향키, 즉 사용자 조작으로만 가능하다. 프레임 기반 위상(autoT)은 기존
+    // ry+=0.006/frame 관례를 따른다 — 고주사율에선 스윙이 빨라질 뿐 범위는 불변.
+    if(this.auto){ this.autoT+=1; this.ry=0.55+Math.sin(this.autoT*0.012)*0.42; }
     this.render();
     this.raf=requestAnimationFrame(()=>this.loop());
   },
@@ -1793,6 +1807,9 @@ const G = {
     const f=l.focus, fc=this.$('dlgFocus'), bg=this.$('dlgBg');
     fc.classList.remove('on');
     if(f){
+      // 방 화면에서 띄운 토스트(잠금 안내 등)가 2.2초 수명 안에 이 대화로 넘어오면
+      // 스포트라이트 링을 가린다(실측 31×46px) — 링이 있는 줄에서는 잔류 토스트를 걷는다.
+      const tst=this.$('toast'); clearTimeout(tst._h); tst.style.display='none';
       // 강조 원이 대화 상자(하단)에 가리면 배경과 원을 같은 양(dy)만큼 위로 민다.
       // 원 바닥이 y=420 위로 오게 하되, 원 꼭대기가 상단 레터박스(y=38) 아래에 남는
       // 범위까지만. 밀어서 바닥에 생기는 빈 띠는 대화 상자·레터박스 뒤에 숨는다.
@@ -1823,13 +1840,21 @@ const G = {
   /* ----- 빠른 조사 모드 (전시·체험용) -----
      '처음부터 다시'가 location.reload() 라서 운영자가 켜 둔 모드가 유지되도록
      localStorage 에 남긴다. 접근 자체가 막힌 환경(시크릿 창·kiosk 프로필)에서는
-     조용히 기본값(꺼짐)으로 시작하고 세션 안에서만 토글이 유지된다. */
-  fastLoad(){ try{ return localStorage.getItem('hansein.fast')==='1'; }catch(e){ return false; } },
+     조용히 기본값(꺼짐)으로 시작하고 세션 안에서만 토글이 유지된다.
+     전시·키오스크 배포 링크용 URL 파라미터 ?fast=1(강제 켜짐)/?fast=0(강제 꺼짐)은
+     저장값보다 우선한다 — 저장은 하지 않으므로, 관람객이 토글을 바꿔도
+     reload('처음부터 다시') 때마다 링크가 정한 전시 기본값으로 되돌아온다. */
+  fastLoad(){
+    const p=new URLSearchParams(location.search).get('fast');
+    if(p==='1') return true;
+    if(p==='0') return false;
+    try{ return localStorage.getItem('hansein.fast')==='1'; }catch(e){ return false; }
+  },
   fastSave(){ try{ localStorage.setItem('hansein.fast', this.fast?'1':'0'); }catch(e){} },
   toggleFast(){
     this.fast=!this.fast; this.fastSave(); this.syncFastBtn();
     this.toast(this.fast
-      ? '빠른 조사 모드 — 대사를 줄여 한 사건 약 4분. 전시·체험용이다.'
+      ? '빠른 조사 모드 — 대사를 줄여 한 사건 약 4~5분. 전시·체험용이다.'
       : '표준 모드 — 모든 대사와 추리 4문항으로 진행한다.', 2600);
   },
   syncFastBtn(){
@@ -1941,14 +1966,14 @@ const G = {
       b.innerHTML=ICON.mag+'<span>'+s.label+'</span>';
       b.onclick=()=>{
         const c=this.C.CLUES[s.clue];
-        if(!this.clues.has(s.clue)){
-          this.clues.add(s.clue);
-          SND.ding();
-          this.toast(ICON.mag+'<span>단서 발견 — '+c.name+'</span>');
-          b.classList.add('done');
-        }
+        const isNew=!this.clues.has(s.clue);
+        if(isNew){ this.clues.add(s.clue); SND.ding(); b.classList.add('done'); }
+        // '단서 발견' 토스트는 대화가 끝나 방으로 돌아온 뒤에 띄운다 — 대화 화면에서
+        // 띄우면 토스트 밴드(y 38..85)가 화면 상단에 붙은 스포트라이트 링(c4 등)을
+        // 가린다(실측 8×57px). 대화 중 발견 피드백은 ding + 제목 칩 '단서 · 이름'이 맡는다.
         this.playDialog([{name:'단서 · '+c.name, text:(this.fast&&c.fast)?c.fast:c.desc, img:r.img, focus:s.focus}],
-          ()=>this.openRoom(key));
+          ()=>{ this.openRoom(key);
+                if(isNew) this.toast(ICON.mag+'<span>단서 발견 — '+c.name+'</span>'); });
       };
       sp.appendChild(b);
     });
