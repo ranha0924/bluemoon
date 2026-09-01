@@ -1193,6 +1193,9 @@ document.addEventListener('click', e=>{
    Enter/Space 대화 진행 · 1~4 선택지(추리/사고 재현) · Esc 수첩/답변 닫기.
    e.repeat 무시 — 키를 누르고 있어도 한 번만 발화한다. */
 document.addEventListener('keydown', e=>{
+  // IME 조합 중 키는 무시한다 — 한글 입력 확정의 Enter/Esc 가 설문을 닫거나
+  // 게임으로 새는 것을 막는다 (keyCode 229 는 조합 키의 구형 브라우저 표현).
+  if(e.isComposing||e.keyCode===229) return;
   const k=e.key;
   // 학급 설문 오버레이가 열려 있는 동안은 게임 키 입력을 받지 않는다 — Esc 만 닫기.
   // 폼 내부의 Tab·Enter·방향키·문자 입력은 브라우저 기본 동작에 맡긴다.

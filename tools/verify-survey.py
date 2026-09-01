@@ -187,10 +187,14 @@ def main():
         noto |= set(map(chr, TTFont(str(ROOT / f'assets/fonts/{w}.subset.woff2')).getBestCmap()))
     miss_body = chars - noto
     check('설문 본문 글자 전부 Noto 서브셋에 존재', not miss_body, ''.join(sorted(miss_body))[:40])
-    nm = set(map(chr, TTFont(str(ROOT / 'assets/fonts/NanumMyeongjo-700.subset.woff2')).getBestCmap()))
-    sec_text = '문항 다시 보기 플레이 소감 내 소감 결과 요약 제출 터지기 전에 OX0123456789.'
-    miss_nm = {c for c in sec_text if ord(c) > 0x20} - nm
-    check('명조 문맥 글자(섹션 제목·숫자) 서브셋에 존재', not miss_nm, ''.join(sorted(miss_nm))[:40])
+    nm7 = set(map(chr, TTFont(str(ROOT / 'assets/fonts/NanumMyeongjo-700.subset.woff2')).getBestCmap()))
+    nm8 = set(map(chr, TTFont(str(ROOT / 'assets/fonts/NanumMyeongjo-800.subset.woff2')).getBestCmap()))
+    # 명조 700 문맥: 섹션 제목·qno 숫자·O/X·사전 완료 인라인 줄 / 800 문맥: 헤더 h1
+    sec_text = '문항 다시 보기 플레이 소감 내 소감 결과 요약 제출 OX0123456789. — 사전 설문 제출 —'
+    miss7 = {c for c in sec_text if ord(c) > 0x20} - nm7
+    miss8 = {c for c in '터지기 전에' if ord(c) > 0x20} - nm8
+    check('명조 700 문맥 글자 서브셋에 존재', not miss7, ''.join(sorted(miss7))[:40])
+    check('명조 800 문맥 글자(헤더) 서브셋에 존재', not miss8, ''.join(sorted(miss8))[:40])
 
     # ---------- V11 위생 ----------
     section('V11 위생')
