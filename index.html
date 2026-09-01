@@ -750,7 +750,7 @@
         <div style="color:#a99f8a; font-size:.82rem">두 건의 가스사고 파일이 탐정을 기다리고 있다</div>
         <div style="color:#7e7462; font-size:.66rem; letter-spacing:.08em; line-height:1.9">한 사건 표준 5~10분 · 빠른 조사 모드 4~5분 · 태블릿/PC 화면 권장<br>실제 가스안전 수칙과 통계를 바탕으로 제작되었습니다</div>
       </div>
-      <div class="ver">ver 4.1</div>
+      <div class="ver">ver 4.2</div>
     </div>
   </div>
 
@@ -2018,6 +2018,34 @@ const G = {
     document.querySelectorAll('[data-ico]').forEach(el=>{ el.innerHTML=ICON[el.dataset.ico]||''; });
     this.fast=this.fastLoad();
     this.setImg('titleImg','keyart'); preloadAll();
+    this.initKiosk();
+  },
+
+  /* ----- 전시 키오스크 무입력 복귀 -----
+     ?fast=1 링크(전시 배포)로 열린 경우에만: 무입력 KIOSK_WARN 에 경고 토스트,
+     KIOSK_OUT 에 reload — URL 이 보존되므로 늘 전시 기본 상태(타이틀·빠른 모드)로
+     돌아간다. 저장값으로 켠 G.fast 는 일반 플레이라 대상이 아니다 — URL 을 직접 본다.
+     타이틀 화면과 학급 설문이 열린 동안은 쉰다. 임계값은 틱마다 다시 읽으므로
+     테스트가 G.KIOSK_* 를 줄여 그대로 검증할 수 있다. */
+  KIOSK_WARN:80000, KIOSK_OUT:90000,
+  initKiosk(){
+    if(new URLSearchParams(location.search).get('fast')!=='1') return;
+    const reset=()=>{ this._kioskLast=Date.now();
+      if(this._kioskWarned){ this._kioskWarned=false; this.$('toast').style.display='none'; } };
+    this._kioskWarned=false; reset();
+    ['pointerdown','keydown','touchstart','wheel'].forEach(ev=>
+      addEventListener(ev, reset, {capture:true, passive:true}));
+    this._kioskInt=setInterval(()=>{
+      const scr=document.querySelector('.screen.active');
+      if((scr&&scr.id==='scr-title')||SV.isOpen()){ this._kioskLast=Date.now(); return; }
+      const idle=Date.now()-this._kioskLast;
+      if(idle>=this.KIOSK_OUT){ location.reload(); return; }
+      if(idle>=this.KIOSK_WARN&&!this._kioskWarned){
+        this._kioskWarned=true;
+        this.toast('잠시 후 처음 화면으로 돌아간다 — 계속하려면 화면을 누르세요',
+          this.KIOSK_OUT-this.KIOSK_WARN);
+      }
+    }, 1000);
   },
   // 남은 목숨은 불 켜진 촛불, 잃은 목숨은 연기만 나는 꺼진 촛불
   candlesHTML(){ return ICON.candle.repeat(this.hearts)+ICON.candleOut.repeat(3-this.hearts); },
