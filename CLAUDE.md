@@ -77,6 +77,14 @@ UI를 수정했다면 최소한 아래를 확인한다.
    한다 — 등급 무영향이 엔진 불변식이다. 키보드(Enter/Space·1~4·Esc)만으로도 완주가
    가능해야 한다. 3D 증거 조사의 자동 모션은 앞면 스윙뿐이라 '발견'은 드래그나 방향키,
    즉 사용자 조작으로만 난다 — 무입력 방치로 발견되면 회귀다.
+   추리 화면의 [수첩]은 `G.openNotebook()` 그대로라 Esc/Enter 로 닫힌다. 재정비(촛불 소진)
+   뒤 같은 문항의 **이미 고른 오답은 잠긴 채**(`disabled`+`.wrong`) 남아야 한다 — 풀리면
+   같은 오답으로 촛불이 중복 차감되는 회귀다. 추리·재현의 [로비로]는 2press(장전 3초) —
+   이탈 직후 1.6초 정답 연출·재현 배너 타이머가 로비 화면을 탈취하지 않아야 하고
+   (`G._dedT`·`SIM.abort()`), 재현 이탈 시 `SND.wantHiss`가 false 여야 한다.
+   `?fast=1`에서는 **무입력 90초 키오스크 복귀**(80초 경고 토스트)가 산다 — 장시간 방치하는
+   테스트는 `?fast=0`으로 돌리거나 `G.KIOSK_WARN`/`G.KIOSK_OUT`을 줄여서 검증한다
+   (틱마다 다시 읽으므로 `page.evaluate` 주입이 바로 먹는다). 타이틀·설문 열림 중엔 쉰다.
 2. **이미지 23장 전부 200**, 그리고 `naturalWidth === 0`인 `<img>`가 없어야 한다.
 3. **콘솔 에러 0건, 외부 네트워크 요청 0건.** 폰트도 `assets/fonts/`의 서브셋 woff2 를
    쓴다(`document.fonts.check`로 4면 확인). 시나리오 텍스트에 새 글자를 추가했다면
@@ -89,13 +97,16 @@ UI를 수정했다면 최소한 아래를 확인한다.
    띄우면 상단에 붙은 스포트라이트 링(c4 등)을 가리기 때문. 대화 중에 뜨면 회귀다.
 
 `.screen`은 `display:none`으로 숨기기만 하고 DOM에서 제거하지 않는다. 그래서 **모든 화면의
-버튼이 항상 동시에 존재한다.** `class="btn"`은 8개 컨테이너(`scr-title` / `scr-lobby`×3 /
-`scr-hub`×5 / `scr-room` / `scr-talk` / `scr-end`×3 / `scr-inspect` / `#notebook`)에
-16개가 깔려 있다(설문 오버레이의 버튼은 `.sv-btn`으로 별도). 사건별 `backLabel`(`"캠핑장으로"` / `"펜션으로"`)은 `scr-room`에만 적용되고,
+버튼이 항상 동시에 존재한다.** `class="btn"`은 10개 컨테이너(`scr-title` / `scr-lobby`×3 /
+`scr-hub`×5 / `scr-room` / `scr-talk` / `scr-deduce`×2 / `scr-sim` / `scr-end`×3 /
+`scr-inspect` / `#notebook`)에 19개가 깔려 있다(설문 오버레이의 버튼은 `.sv-btn`으로 별도).
+사건별 `backLabel`(`"캠핑장으로"` / `"펜션으로"`)은 `scr-room`에만 적용되고,
 `scr-talk`의 `"인물 선택으로"`(인물 선택창 복귀), `scr-inspect`의 `"돌아가기"`,
 허브의 `"로비로"`(사건 도중 로비 복귀 — 재진입 시 초기화)는 정적
 텍스트다. 허브의 `#talkMenuBtn`은 조사 화면에선 `"인물 심문"`, 인물 선택 중엔
-`"조사로 돌아가기"`(back)로 라벨이 바뀐다 — 텍스트가 아니라 id/위치로 잡는다.
+`"조사로 돌아가기"`(back)로 라벨이 바뀐다. `"로비로"` 라벨 버튼은 이제 허브·추리·재현
+**세 곳**이고, 추리·재현 것(`#dedLobbyBtn`/`#simLobbyBtn`)은 2press 장전 중 라벨이
+`"한 번 더 누르면 로비로"`로 바뀐다 — 텍스트가 아니라 id/위치로 잡는다.
 반드시 `#scr-room .btn`처럼 화면 단위로 범위를 좁혀서 잡는다.
 
 `.spot-btn`(`#spots`)과 `.q-btn`(`#talkQs`)은 각각 한 화면에만 생성되므로 이 문제가 없다.
@@ -110,7 +121,7 @@ UI를 수정했다면 최소한 아래를 확인한다.
 
 ## Git
 
-- 작업 브랜치: `claude/gas-safety-game-judging-6sxk4p`
+- 작업 브랜치: `claude/gas-safety-game-judging-e2tjqe`
 - **푸시 전에 `git branch --show-current`로 현재 브랜치를 확인한다.** 머지 직후에는 `main`이
   체크아웃된 상태로 남아 있을 수 있어서, 확인 없이 밀면 `main`으로 바로 들어간다.
 - 푸시는 `git push -u origin <branch>`. 네트워크 실패 시에만 2s/4s/8s/16s 백오프로 재시도.
