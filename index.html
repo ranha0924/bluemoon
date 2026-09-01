@@ -1807,6 +1807,9 @@ const G = {
     const f=l.focus, fc=this.$('dlgFocus'), bg=this.$('dlgBg');
     fc.classList.remove('on');
     if(f){
+      // 방 화면에서 띄운 토스트(잠금 안내 등)가 2.2초 수명 안에 이 대화로 넘어오면
+      // 스포트라이트 링을 가린다(실측 31×46px) — 링이 있는 줄에서는 잔류 토스트를 걷는다.
+      const tst=this.$('toast'); clearTimeout(tst._h); tst.style.display='none';
       // 강조 원이 대화 상자(하단)에 가리면 배경과 원을 같은 양(dy)만큼 위로 민다.
       // 원 바닥이 y=420 위로 오게 하되, 원 꼭대기가 상단 레터박스(y=38) 아래에 남는
       // 범위까지만. 밀어서 바닥에 생기는 빈 띠는 대화 상자·레터박스 뒤에 숨는다.
