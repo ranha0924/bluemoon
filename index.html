@@ -750,7 +750,7 @@
         <div style="color:#a99f8a; font-size:.82rem">두 건의 가스사고 파일이 탐정을 기다리고 있다</div>
         <div style="color:#7e7462; font-size:.66rem; letter-spacing:.08em; line-height:1.9">한 사건 표준 5~10분 · 빠른 조사 모드 4~5분 · 태블릿/PC 화면 권장<br>실제 가스안전 수칙과 통계를 바탕으로 제작되었습니다</div>
       </div>
-      <div class="ver">ver 4.2</div>
+      <div class="ver">ver 4.3</div>
     </div>
   </div>
 
@@ -1127,7 +1127,7 @@ const ICON = {
     + '<path d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg>'
 };
 
-/* ---------- 사운드 (WebAudio, 외부 파일 없음) ---------- */
+/* ---------- 사운드 (효과음은 WebAudio 합성, 외부 파일 없음 — 배경음악만 예외, 아래 BGM) ---------- */
 const SND = {
   ctx:null, on:true, rainNodes:null, wantRain:false,
   ensure(){ if(!this.ctx){ try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return this.ctx; },
@@ -1186,7 +1186,56 @@ const SND = {
     this.on=!this.on;
     this.applyRain();
     this.applyHiss();
+    BGM.apply();
     return this.on;
+  }
+};
+
+/* ---------- 배경음악 (BGM) — 유일한 외부 사운드 파일 ----------
+   사건별 1곡을 CASES[].bgm 키로 매핑한다 (assets/bgm/<키>.mp3, Suno AI 생성 자작 음원).
+   타이틀·로비는 무음 — 재생 시작이 항상 startCase(클릭/Enter 제스처 스택 안)라
+   자동재생 정책이 자연 충족되고, 로비에서만 열리는 학급 설문과 공존할 일도 없다.
+   음소거는 muted(SND.on 연동), 페이드는 volume — 축을 분리해 토글과 페이드가
+   경합하지 않는다 (rain·hiss 의 '게인 게이트' 패턴의 HTMLAudio 판).
+   WebAudio 그래프에는 연결하지 않는다 — file:// 실행에서 불투명 출처가 되어 무음이 된다. */
+const BGM = {
+  VOL:.14, FADE:600, STEP:40,     // 목표 볼륨(약 -17dB) · 페이드 총 ms · 틱 ms
+  el:{}, cur:null, _fadeT:null,
+  // 트랙당 <audio> 하나를 캐시한다 — 같은 곡의 이중 재생이 구조적으로 불가능해진다.
+  ensure(key){
+    if(!this.el[key]){
+      const a=new Audio('assets/bgm/'+key+'.mp3');
+      a.loop=true; a.preload='auto'; a.volume=0;
+      this.el[key]=a;
+    }
+    return this.el[key];
+  },
+  init(){ this.ensure('eg1'); this.ensure('eg2'); },   // 다운로드만 미리 — play() 는 제스처 뒤
+  play(key){
+    if(!key){ this.stop(); return; }        // bgm 없는 사건은 무음 (데이터 주도 확장 대비)
+    const a=this.ensure(key);
+    this._clearFade();
+    if(this.cur&&this.cur!==a){ this.cur.pause(); this.cur.volume=0; }
+    this.cur=a; a.muted=!SND.on;
+    if(a.readyState) a.currentTime=0;       // 사건 재시작마다 곡 처음부터 (미로드면 이미 0)
+    const p=a.play(); if(p&&p.catch) p.catch(()=>{});   // 자동재생 거부·404 → 조용히 무음
+    this._fadeTo(this.VOL);
+  },
+  stop(){ this._clearFade(); if(this.cur){ this.cur.pause(); this.cur.volume=0; this.cur=null; } },
+  fadeOut(){ if(this.cur&&!this.cur.paused) this._fadeTo(0, ()=>{ if(this.cur) this.cur.pause(); }); },
+  apply(){ for(const k in this.el) this.el[k].muted=!SND.on; },   // SND.toggle 이 부른다
+  _clearFade(){ clearInterval(this._fadeT); this._fadeT=null; },
+  // 단일 페이드 핸들 — 모든 진입점이 먼저 _clearFade() 를 지나 타이머가 쌓이지 않는다
+  // (backToLobby 의 _dedT·SIM.abort 회수와 같은 철학).
+  _fadeTo(target, done){
+    this._clearFade();
+    const a=this.cur; if(!a) return;
+    const d=(target-a.volume)/(this.FADE/this.STEP);
+    this._fadeT=setInterval(()=>{
+      const v=a.volume+d;
+      if((d>=0&&v>=target)||(d<0&&v<=target)){ a.volume=target; this._clearFade(); done&&done(); }
+      else a.volume=v;
+    }, this.STEP);
   }
 };
 // blur(): 마우스로 누른 버튼에 포커스가 남으면, 화면이 바뀐 뒤의 Enter/Space 가
@@ -1301,6 +1350,7 @@ function flashRed(){
    필수 필드
      no/name/cover/intro  로비 카드 (cover 는 IMG·CDN 의 이미지 key)
      hubTitle/hubWord/backLabel/talkBg/rain   허브·심문 화면 표기와 연출
+     bgm  사건 배경음악 키 (assets/bgm/<키>.mp3 — 생략하면 그 사건은 무음)
      needTesti/needLabel  추리 시작에 필요한 증언 id 와 그 표시 이름
      CLUES/TESTI/ROOMS/PEOPLE/PROLOGUE/REVEAL/DEDUCE
      deduceIntro/regroup/ending
@@ -1309,7 +1359,7 @@ const CASE1 = {
   no:1, name:"한여름 밤의 파열음", cover:"cover1",
   intro:"여름밤 캠핑장을 뒤흔든 부탄캔 파열음. 모두가 알바생을 의심하지만 — 진짜 범인은 다섯 겹으로 쌓여 있었다.",
   hubTitle:"별무리 캠핑장 — 조사 중", hubWord:"캠핑장", backLabel:"캠핑장으로",
-  talkBg:"firepit", rain:false,
+  talkBg:"firepit", rain:false, bgm:"eg1",
   needTesti:"t1", needLabel:"초롱의 목격담",
 
   /* ---------- 단서 ---------- */
@@ -1497,7 +1547,7 @@ const CASE2 = {
   no:2, name:"보이지 않는 손님", cover:"cover2",
   intro:"폭설 내린 밤, 냄새도 소리도 없이 펜션 손님들이 쓰러져 갔다. 다섯 번째 손님의 정체는 — 사람이 아니다.",
   hubTitle:"설래원 펜션 — 조사 중", hubWord:"펜션", backLabel:"펜션으로",
-  talkBg:"guestroom", rain:false,
+  talkBg:"guestroom", rain:false, bgm:"eg2",
   needTesti:"t1", needLabel:"설아의 증언",
 
   /* ---------- 단서 ---------- */
@@ -2030,6 +2080,7 @@ const G = {
     document.querySelectorAll('[data-ico]').forEach(el=>{ el.innerHTML=ICON[el.dataset.ico]||''; });
     this.fast=this.fastLoad();
     this.setImg('titleImg','keyart'); preloadAll();
+    BGM.init();
     this.initKiosk();
   },
 
@@ -2179,6 +2230,7 @@ const G = {
     // 이 단일 관문에서 전부 끊는다 (허브·엔딩의 로비 버튼도 이 경로를 지난다 — idle 이면 no-op).
     clearTimeout(this._dedT); this._dedT=null;
     SIM.abort();
+    BGM.fadeOut();
     this.disarmLobbyBtns();
     this.closeNotebook();
     this.$('talkAnswer').style.display='none';
@@ -2197,6 +2249,7 @@ const G = {
     this.$('clueTot').textContent='/'+Object.keys(this.C.CLUES).length;
     this.$('testiTot').textContent='/'+Object.keys(this.C.TESTI).length;
     SND.setRain(this.C.rain);
+    BGM.play(this.C.bgm);
     // 빠른 모드는 강제 노출 대사만 줄인다 — 수첩·심문의 전체 텍스트는 그대로 남는다.
     this.DQ=this.C.DEDUCE;
     const intro=(this.fast&&this.C.fastPrologue)?this.C.fastPrologue:this.C.PROLOGUE;
