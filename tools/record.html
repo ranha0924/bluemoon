@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>게임 녹화 도우미 — 터지기 전에</title>
+<!-- 공모전 1분 영상용 소재 촬영 도구. 게임 본체와 무관한 개발 보조 파일이다.
+     원리: getDisplayMedia 로 "Chrome 탭 + 탭 오디오"를 캡처한다. 마이크를 아예
+     요청하지 않으므로 주변 소음이 들어갈 경로가 없고, 탭 오디오는 스피커 볼륨과
+     무관하게 잡히므로 이어폰/음소거 상태로도 게임 소리가 녹화된다.
+     macOS 의 Chrome 은 '창/전체 화면' 공유에선 소리를 못 담는다 — 반드시 '탭'. -->
+<style>
+  body { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background:#14110d;
+    color:#e8e2d5; max-width:760px; margin:0 auto; padding:28px 20px 60px; line-height:1.7; }
+  h1 { font-size:1.4rem; color:#d9b96a; letter-spacing:.06em; }
+  ol { padding-left:22px; } li { margin:8px 0; }
+  b { color:#f2dfa8; }
+  .warn { color:#e0a463; font-size:.9rem; }
+  button { font:inherit; font-weight:700; color:#f0e8d8; cursor:pointer;
+    background:linear-gradient(180deg,#4a4130,#2c2619); border:1px solid rgba(200,165,92,.5);
+    border-radius:6px; padding:12px 26px; margin-right:10px; }
+  button.gold { background:linear-gradient(180deg,#7d6231,#4e3d1b); border-color:#c8a55c; }
+  button:disabled { opacity:.4; cursor:default; }
+  #status { margin:14px 0; padding:12px 16px; border:1px solid rgba(200,165,92,.35);
+    border-radius:6px; background:rgba(200,165,92,.06); min-height:1.6em; }
+  #preview { width:100%; margin-top:14px; border:1px solid #3d372b; border-radius:6px;
+    background:#000; display:none; }
+  a#save { display:none; margin-top:12px; font-weight:800; color:#12100e;
+    background:#d9b96a; text-decoration:none; padding:12px 26px; border-radius:6px; }
+  .rec-dot { display:inline-block; width:10px; height:10px; border-radius:50%;
+    background:#d4544a; margin-right:6px; animation:blink 1s infinite; }
+  @keyframes blink { 50% { opacity:.25; } }
+</style>
+</head>
+<body>
+<h1>🎬 게임 녹화 도우미 — 게임 탭 소리만 녹화</h1>
+<p>마이크를 사용하지 않으므로 <b>교실 소음이 전혀 들어가지 않고</b>, 게임 효과음만 녹화됩니다.
+이어폰을 꽂거나 볼륨을 줄여도 소리는 정상적으로 담깁니다.</p>
+<ol>
+  <li>이 페이지와 게임(<code>index.html</code>)을 <b>Chrome</b>의 서로 다른 탭으로 연다 (Safari 불가)</li>
+  <li><b>[녹화 시작]</b> → 공유 창에서 <b>“Chrome 탭”</b> → 게임 탭 선택 →
+      하단의 <b>“탭 오디오도 공유” 반드시 체크</b> → 공유</li>
+  <li>게임 탭으로 넘어가 플레이한다 (로비에서 <b>빠른 조사 모드</b>를 켜고 찍는 것을 추천)</li>
+  <li>끝나면 이 탭으로 돌아와 <b>[정지]</b> → <b>[영상 저장]</b></li>
+</ol>
+<p class="warn">※ “창” 이나 “전체 화면” 공유를 고르면 맥에서는 소리가 안 담깁니다 — 꼭 “Chrome 탭”.</p>
+
+<p>
+  <button class="gold" id="btnStart" onclick="start()">● 녹화 시작</button>
+  <button id="btnStop" onclick="stop()" disabled>■ 정지</button>
+</p>
+<div id="status">대기 중</div>
+<a id="save" download>⬇ 영상 저장</a>
+<video id="preview" controls></video>
+
+<script>
+let rec = null, stream = null, chunks = [], t0 = 0, timer = null;
+const $ = id => document.getElementById(id);
+const status = (html) => { $('status').innerHTML = html; };
+
+// mp4 를 지원하는 크롬이면 mp4 로, 아니면 webm 으로 녹화한다.
+function pickMime() {
+  const cands = [
+    'video/mp4;codecs=avc1.640028,mp4a.40.2',
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=h264,opus',
+    'video/webm;codecs=vp9,opus',
+    'video/webm'
+  ];
+  return cands.find(c => window.MediaRecorder && MediaRecorder.isTypeSupported(c)) || '';
+}
+
+async function start() {
+  chunks = [];
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 60 },
+      audio: true,                    // 탭 오디오 (마이크 아님)
+      selfBrowserSurface: 'exclude'   // 목록에서 이 페이지 자신의 탭은 숨긴다
+    });
+  } catch (e) {
+    status('공유가 취소되었거나 차단되었습니다: ' + e.message +
+      '<br>버튼이 아예 동작하지 않으면 <code>file://</code> 대신 로컬 서버로 열어 보세요.');
+    return;
+  }
+  if (stream.getAudioTracks().length === 0) {
+    stream.getTracks().forEach(t => t.stop());
+    status('⚠️ <b>소리가 안 담기는 상태입니다.</b> 공유 창에서 “Chrome 탭”을 고르고 ' +
+      '하단 <b>“탭 오디오도 공유”</b> 체크박스를 켠 뒤 다시 시도하세요. ' +
+      '(“창”·“전체 화면” 공유는 맥에서 소리가 안 담깁니다)');
+    return;
+  }
+  const mime = pickMime();
+  rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : undefined);
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = done;
+  // 크롬 상단의 '공유 중지'로 끝내도 정상 저장되도록
+  stream.getVideoTracks()[0].onended = () => stop();
+  rec.start(1000);
+  t0 = Date.now();
+  $('btnStart').disabled = true; $('btnStop').disabled = false;
+  $('save').style.display = 'none'; $('preview').style.display = 'none';
+  timer = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    status('<span class="rec-dot"></span>녹화 중 — ' +
+      String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0') +
+      ' · 게임 탭 소리 녹음 중 (마이크 미사용)');
+  }, 500);
+}
+
+function stop() {
+  clearInterval(timer);
+  if (rec && rec.state !== 'inactive') rec.stop();
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  $('btnStart').disabled = false; $('btnStop').disabled = true;
+}
+
+function done() {
+  const type = (rec && rec.mimeType) || 'video/webm';
+  const ext = type.includes('mp4') ? 'mp4' : 'webm';
+  const blob = new Blob(chunks, { type });
+  const url = URL.createObjectURL(blob);
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  const name = '터지기전에_녹화_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) +
+    '_' + p(d.getHours()) + p(d.getMinutes()) + '.' + ext;
+  const a = $('save'); a.href = url; a.download = name; a.style.display = 'inline-block';
+  const v = $('preview'); v.src = url; v.style.display = 'block';
+  status('완료 — ' + ext.toUpperCase() + ' · ' + (blob.size / 1048576).toFixed(1) + 'MB. ' +
+    (ext === 'webm'
+      ? 'webm 파일은 CapCut·클립챔프에서 바로 편집할 수 있고, 제출 규격이 mp4면 거기서 mp4로 내보내면 됩니다.'
+      : 'mp4 그대로 iMovie·CapCut에서 편집하면 됩니다.'));
+}
+</script>
+</body>
+</html>
