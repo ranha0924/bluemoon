@@ -1,0 +1,2 @@
+# 오프라인 단일 파일판은 생성물(약 12.7MB, base64) — diff·PR 화면에 본문을 쏟지 않는다
+dist/*.html -diff linguist-generated=true

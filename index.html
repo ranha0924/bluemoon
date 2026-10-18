@@ -1025,7 +1025,8 @@
    ========================================================= */
 
 /* ---------- 이미지 ----------
-   로컬 assets/*.webp 를 먼저 쓰고, 없으면 원본 CDN(png)으로 자동 폴백한다.
+   로컬 assets/*.webp 를 먼저 쓰고, 없으면 원본 CDN(png)으로 자동 폴백한다
+   (오프라인 단일 파일 판은 아래 BIB_OFFLINE 의 내장본을 쓰고 CDN 은 부르지 않는다).
    assets/ 안의 파일은 CDN 원본(Higgsfield AI 생성)을 그대로 내려받아 웹용으로 변환한 것:
    배경 13장은 2752x1536 원본 해상도 그대로 WebP q82,
    인물 10장은 배경 제거 + 투명 여백 트림 후 높이 1000px WebP q86(알파 유지). */
@@ -1059,15 +1060,33 @@ const CDN = {
   inspector: "hf_20260830_073626_00966a3b-f9b1-4736-b943-ad28732c8601.png"
 };
 const IMG = {};
-for (const k in CDN) IMG[k] = "assets/" + k + ".webp";
+/* 오프라인 단일 파일 빌드(tools/build-offline.py)는 이미지·BGM 을 base64 로
+   window.BIB_OFFLINE 에 실어 이 스크립트 앞에 넣는다 — 여기서 blob: URL 로 바꿔 쓴다
+   (data: 를 그대로 쓰면 innerHTML 문자열이 수십만 자가 되고, 4MB 넘는 음원은 URL 길이
+   상한에 걸린다). 원본 index.html 에는 이 전역이 없으므로 아래 경로는 전부 종전 그대로다.
+   오프라인 판에서는 CDN 폴백을 끈다 — 실패한 <img>는 숨기만 하고 외부 요청은 0건이다.
+   blob URL 은 재렌더마다 다시 쓰므로 revoke 하지 않는다(새로고침이 회수한다). */
+const OFF = window.BIB_OFFLINE || null;
+function offURL(kind, k, type){
+  const b = OFF && OFF[kind] && OFF[kind][k]; if (!b) return '';
+  try {
+    let u;                               // 네이티브 디코더가 있으면 그쪽이 2~3배 빠르다(실측)
+    if (Uint8Array.fromBase64) u = Uint8Array.fromBase64(b);
+    else { const s = atob(b), n = s.length; u = new Uint8Array(n);
+      for (let i = 0; i < n; i++) u[i] = s.charCodeAt(i); }
+    OFF[kind][k] = null;                 // base64 원문은 GC 가 회수하게 놓아준다
+    return URL.createObjectURL(new Blob([u], {type}));
+  } catch (e) { return ''; }
+}
+for (const k in CDN) IMG[k] = OFF ? offURL('img', k, 'image/webp') : "assets/" + k + ".webp";
 
-// 화면에 붙은 <img>가 로드에 실패하면 CDN 원본으로 한 번 재시도한다.
+// 화면에 붙은 <img>가 로드에 실패하면 CDN 원본으로 한 번 재시도한다(오프라인 판은 숨김만).
 document.addEventListener('error', function(e){
   const el = e.target;
   if (!el || el.tagName !== 'IMG') return;
   const k = el.dataset.k;
   if (!k || !CDN[k]) return;
-  if (!el.dataset.fb) { el.dataset.fb = "1"; el.src = CDN_BASE + CDN[k]; }
+  if (!el.dataset.fb && !OFF) { el.dataset.fb = "1"; el.src = CDN_BASE + CDN[k]; }
   else { el.style.display = "none"; }
 }, true);
 
@@ -1076,7 +1095,7 @@ document.addEventListener('error', function(e){
 function preloadAll(){
   for (const k in IMG){
     const im = new Image();
-    im.onerror = function(){ im.onerror = null; im.src = CDN_BASE + CDN[k]; };
+    im.onerror = function(){ im.onerror = null; if (!OFF) im.src = CDN_BASE + CDN[k]; };
     im.src = IMG[k];
   }
 }
@@ -1192,7 +1211,8 @@ const SND = {
 };
 
 /* ---------- 배경음악 (BGM) — 유일한 외부 사운드 파일 ----------
-   사건별 1곡을 CASES[].bgm 키로 매핑한다 (assets/bgm/<키>.mp3, Suno AI 생성 자작 음원).
+   사건별 1곡을 CASES[].bgm 키로 매핑한다 (assets/bgm/<키>.mp3, Suno AI 생성 자작 음원 —
+   오프라인 단일 파일 판은 같은 파일의 내장본을 blob: 으로 쓴다, 위 offURL).
    타이틀·로비는 무음 — 재생 시작이 항상 startCase(클릭/Enter 제스처 스택 안)라
    자동재생 정책이 자연 충족되고, 로비에서만 열리는 학급 설문과 공존할 일도 없다.
    음소거는 muted(SND.on 연동), 페이드는 volume — 축을 분리해 토글과 페이드가
@@ -1204,7 +1224,7 @@ const BGM = {
   // 트랙당 <audio> 하나를 캐시한다 — 같은 곡의 이중 재생이 구조적으로 불가능해진다.
   ensure(key){
     if(!this.el[key]){
-      const a=new Audio('assets/bgm/'+key+'.mp3');
+      const a=new Audio(OFF?offURL('bgm',key,'audio/mpeg'):'assets/bgm/'+key+'.mp3');
       a.loop=true; a.preload='auto'; a.volume=0;
       this.el[key]=a;
     }
