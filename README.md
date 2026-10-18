@@ -24,6 +24,28 @@
 `index.html`을 브라우저로 열면 바로 시작된다. 빌드 과정이나 서버는 필요 없다.
 타이틀 → **로비(사건 선택)** → 프롤로그 → 허브 → 조사·심문 → 추리 → **사고 재현** → 진상 → 엔딩 순으로 진행된다.
 
+### 오프라인 단일 파일판
+
+**`dist/before-it-blows-offline.html`** 파일 하나에 이미지 23장·폰트 4벌·배경음악 2곡이 모두
+들어 있다(약 12.7MB). `assets/` 폴더도 인터넷도 없이, 이 파일만 USB·메일·메신저로 옮겨
+더블클릭하면 똑같이 실행된다(오프라인 전시·수업용). GitHub 에서 받을 때는 파일 화면의
+**Download raw file** 버튼을 쓴다 — Raw 를 누르면 브라우저가 텍스트로 보여 준다.
+PC 브라우저(Chrome·Edge·Whale 등) 기준이며, 휴대폰은 로컬 HTML 파일 열기가 기기마다
+제각각이라 권하지 않는다.
+
+이 파일은 `tools/build-offline.py`가 `index.html` + `assets/`로 만든 **생성 파일**이다.
+`index.html`이나 에셋을 고쳤으면 다시 만든다.
+
+```bash
+python3 tools/build-offline.py            # 생성 (같은 입력이면 바이트까지 같은 결과)
+python3 tools/build-offline.py --check    # 커밋된 파일이 최신인지 확인
+python3 tools/verify-offline.py           # 빈 폴더 + 오프라인 file:// 로 전체 플레이 검증
+```
+
+폰트는 CSS 안의 `data:` URI 로, 이미지·음악은 실행되지 않는 base64 블록으로 실리고,
+`index.html`의 `offURL()`이 이를 `blob:` URL 로 바꿔 쓴다. 이 판에서는 CDN 폴백을 끄므로
+외부 요청이 0건이다. 폰트 라이선스(SIL OFL 1.1) 원문은 파일 머리 주석에 그대로 들어 있다.
+
 ## 구성
 
 | 경로 | 내용 |
@@ -33,6 +55,9 @@
 | `assets/fonts/` | 서브셋 웹폰트 4벌(woff2, 총 ~0.4MB) + SIL OFL 1.1 라이선스 원문 |
 | `tools/build-fonts.sh` | 시나리오 텍스트 변경 시 서브셋 재생성 스크립트 |
 | `tools/verify-survey.py` | 내장 학급 설문 자동 검증(진입·딥링크·채점·무유출·키 격리·폰트 커버리지 등 V1~V12) |
+| `dist/before-it-blows-offline.html` | 오프라인 단일 파일판(생성 파일 — 위 '오프라인 단일 파일판') |
+| `tools/build-offline.py` | 단일 파일판 생성·최신성 확인(`--check`) |
+| `tools/verify-offline.py` | 단일 파일판 자동 검증(빈 폴더·오프라인 file:// 에서 에셋·전체 플레이·외부 요청 0) |
 | `video/before-it-blows_1min_v6.mp4` | 공모전 제출용 1분 실행 영상(57초 · 1080p · 자체 합성 음향) |
 | `submission/application_form.pdf` | 참가 신청서(A4 3쪽 — 양식·출품작 이미지·상세 설명) |
 | `submission/class_survey.pdf` | 같은 설문의 인쇄용(A4 3쪽 — 사전·사후·교사용) |
@@ -118,7 +143,8 @@ const CASES = { case1:CASE1, case2:CASE2, case3:CASE3 };
 - **폰트 4벌** — 나눔명조 700/800(제목), Noto Sans KR 400/700(본문). Google Fonts 배포본을
   `index.html`의 전체 문자 + ASCII 로 서브셋해 woff2 로 동봉했다(834자 기준 총 ~0.4MB).
   덕분에 **인터넷 없이도(오프라인 전시·수업) 동일하게 렌더**되고 외부 요청이 0건이다.
-  라이선스는 SIL OFL 1.1 — 원문을 `assets/fonts/OFL-*.txt`로 함께 둔다.
+  라이선스는 SIL OFL 1.1 — 원문을 `assets/fonts/OFL-*.txt`로 함께 둔다
+  (오프라인 단일 파일판에는 같은 원문이 파일 머리 주석으로 들어간다).
   시나리오에 새 글자를 추가하면 `tools/build-fonts.sh`로 다시 잘라야 한다.
 
 ## 조작
