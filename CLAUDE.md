@@ -50,7 +50,7 @@
   CDN 은 부르지 않는다.)
 - **`dist/before-it-blows-offline.html`은 생성 파일이다** — 직접 고치지 않는다.
   `index.html`이나 `assets/`를 고쳤으면 커밋 전에 `python3 tools/build-offline.py`로 다시 만들고
-  `--check`로 최신인지 확인한다. `index.html`에 `<script>`를 하나 더 두거나 `BIB_OFFLINE`
+  `--check`로 최신인지 확인한다. `index.html`에 `<script>`나 `<body>`를 하나 더 두거나 `BIB_OFFLINE`
   연결부를 지우면 빌드가 실패한다(삽입 위치·연결부를 특정할 수 없기 때문 — 의도된 가드).
 - 효과음은 WebAudio로 직접 합성한다. 사운드 파일을 추가하지 않는다.
 - **학급 설문(`#survey`)은 `#fit` 바깥의 전면 고정 오버레이다** (rotateHint 계열,
@@ -103,7 +103,7 @@ UI를 수정했다면 최소한 아래를 확인한다.
    띄우면 상단에 붙은 스포트라이트 링(c4 등)을 가리기 때문. 대화 중에 뜨면 회귀다.
 
 5. **오프라인 단일 파일판** — `index.html`·에셋을 고쳤다면 다시 빌드한 뒤
-   `python3 tools/verify-offline.py`(O1~O5)를 돌린다. 이 파일만큼은 서버가 아니라
+   `python3 tools/verify-offline.py`(O1~O7)를 돌린다. 이 파일만큼은 서버가 아니라
    **빈 폴더 + 오프라인 `file://`**이 실제 사용 환경이라 스크립트가 그렇게 연다
    (위 '로컬 서버로 띄워서 검사' 규칙의 예외).
 

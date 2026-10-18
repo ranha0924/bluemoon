@@ -8,9 +8,11 @@ DNS 차단 상태라, assets/ 나 인터넷에 기대는 곳이 하나라도 있
 
   python3 tools/build-offline.py --check && python3 tools/verify-offline.py
 
-O1 최신성   O2 에셋(이미지 23장·폰트 4면·BGM blob 재생)   O3 전체 플레이
-(사건 2개 × 표준/빠른 — 단서·증언·3D 발견·추리·재현 등급 무영향·엔딩)
-O4 임명장 PNG   O5 위생(페이지 외 요청 0 · 실패 요청 0 · 콘솔 에러 0)
+O1 최신성   O2 에셋(이미지 23장·폰트 4면)   O3 전체 플레이(사건 2개 × 표준/빠른 —
+단서·증언·3D 발견·추리·재현 등급 무영향·엔딩·BGM 내장본 재생)   O4 임명장 PNG
+O5 위생(페이지 외 요청 0 · 실패 요청 0 · 콘솔 에러 0)
+O6 로딩 중 이른 클릭(CPU 4배 감속) — 타이틀 버튼이 보이는 순간 이미 동작해야 한다
+O7 '다른 이름으로 저장(웹페이지, 전체)' 사본(현재 DOM 직렬화)도 이미지를 품고 있다
 """
 import shutil, subprocess, sys, tempfile
 from pathlib import Path
@@ -19,6 +21,9 @@ ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / 'dist' / 'before-it-blows-offline.html'
 CH = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
 OK, BAD = [], []
+for _s in (sys.stdout, sys.stderr):   # 한국어 윈도우 cp949 리다이렉트에서 '—' 로 죽지 않게
+    try: _s.reconfigure(errors='replace')
+    except AttributeError: pass
 
 
 def check(name, cond, extra=''):
@@ -118,7 +123,6 @@ def main():
                 '400 16px "Noto Sans KR"','700 16px "Noto Sans KR"']) await document.fonts.load(f,'가').catch(()=>{});
                 return [...document.fonts].map(f=>f.status); })()""")
             check(f'폰트 4면 loaded {faces}', faces == ['loaded'] * 4)
-            check('데이터 블록은 읽은 뒤 DOM 에서 제거', pg.evaluate("document.querySelectorAll('script[type=\"text/plain\"]').length===0"))
 
             section('O3 전체 플레이')
             for idx in (0, 1):
@@ -136,6 +140,33 @@ def main():
             check('페이지 외 요청 0건', not other, other[:5])
             check('실패 요청 0건', not failed, failed[:5])
             check('콘솔 에러 0건', not errs, errs[:5])
+            ctx.close()
+
+            section('O6 로딩 중 이른 클릭')
+            ctx = b.new_context(viewport={'width': 1100, 'height': 760}, offline=True); pg = ctx.new_page(); errs = []
+            pg.on('pageerror', lambda e: errs.append(str(e)))
+            ctx.new_cdp_session(pg).send('Emulation.setCPUThrottlingRate', {'rate': 4})
+            pg.goto(url, wait_until='commit')
+            seen = None
+            for _ in range(3000):   # 버튼이 화면에 잡히는 첫 순간을 노린다
+                try:
+                    if pg.evaluate("(()=>{const b=document.querySelector('#scr-title .btn'); return !!b && b.getClientRects().length>0})()"):
+                        seen = pg.evaluate('typeof G'); pg.click('#scr-title .btn', force=True); break
+                except Exception: pass
+            pg.wait_for_load_state('load'); pg.wait_for_timeout(300)
+            check(f'버튼이 보일 때 엔진 준비됨(typeof G={seen}) → 로비 진입', seen == 'object' and active(pg) == 'scr-lobby', active(pg))
+            check('이른 클릭 pageerror 0건', not errs, errs[:3])
+            ctx.close()
+
+            section("O7 '다른 이름으로 저장' 사본")
+            ctx = b.new_context(offline=True); pg = ctx.new_page()
+            pg.goto(url); pg.wait_for_timeout(500)
+            saved = tmp / 'saved-copy.html'   # 크롬 기본 저장 형식은 현재 DOM 을 직렬화한다
+            saved.write_text('<!DOCTYPE html>\n' + pg.evaluate('document.documentElement.outerHTML'), encoding='utf-8')
+            pg.goto(saved.as_uri()); pg.wait_for_timeout(800)
+            n = pg.evaluate("Object.values(IMG).filter(u=>u.startsWith('blob:')).length")
+            check(f'저장 사본에서도 내장 이미지 {n}/23 · 타이틀 표시',
+                  n == 23 and pg.evaluate("document.getElementById('titleImg').naturalWidth>0"))
             b.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

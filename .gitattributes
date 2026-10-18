@@ -1,2 +1,3 @@
-# 오프라인 단일 파일판은 생성물(약 12.7MB, base64) — diff·PR 화면에 본문을 쏟지 않는다
-dist/*.html -diff linguist-generated=true
+# 오프라인 단일 파일판은 생성물(약 12.7MB, base64) — diff·PR 화면에 본문을 쏟지 않고,
+# 윈도우 autocrlf 체크아웃에서도 바이트 그대로 둔다(줄바꿈이 바뀌면 --check 가 거짓 실패한다)
+dist/*.html -text -diff linguist-generated=true
