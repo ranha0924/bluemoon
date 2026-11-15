@@ -19,6 +19,8 @@ W0 정합성(build-voice.py check)   W1 자가검증(무제스처 재생 거부)
 W2 전체 플레이 — 사건 2개 × 표준/빠른, 대화 화면의 모든 줄·심문 답변·엔딩 글이 제 파일로
 재생되고 탑재된 음성 전부(VOICE.have)를 한 번 이상 들었는지
 W3 정지 경로(다음 줄·대화 종료·답변 닫기 4종·인물 선택으로·로비 이탈 4종)
+   — 검사에 쓸 줄은 페이지에서 고른다. 음성 있는 줄이 남아 있는 한 건너뛰지 않으며, 건너뛴 검사가 있으면
+   마지막 줄이 'PASS(부분)'으로 바뀐다(건너뜀은 통과가 아니다).
 W4 같은 질문 다시 묻기   W5 음소거 연동·음량 불변   W6 고친 대사는 무음·무요청
 W7 키보드만으로 완주   W8 키오스크 무입력 복귀   W9 위생(에러·4xx·외부 요청)
 """
@@ -84,12 +86,16 @@ def silent(pg):
 
 HEARD, LAT = set(), []
 # 검사 대상 줄은 페이지에서 고른다 — 특정 대사를 코드에 박아 두면 그 줄을 고쳤을 때 거짓 실패가 난다.
-PICK_ANSWER = """(()=>{ const cs=Object.keys(CASES);     // 처음부터 열려 있고 음성이 있는 심문 답변 하나
+PICK_ANSWER = """(()=>{ const cs=Object.keys(CASES);     // 음성이 있는 심문 답변 하나 (잠긴 질문이어도 된다 — ask 가 푼다)
   for(let ci=0;ci<cs.length;ci++){ const P=CASES[cs[ci]].PEOPLE, ps=Object.keys(P);
     for(let pi=0;pi<ps.length;pi++){ const p=P[ps[pi]];
       for(let qi=0;qi<p.qs.length;qi++){ const k=VOICE.key(p.name.split(' · ')[0], p.qs[qi].a);
-        if(!p.qs[qi].need && VOICE.have.has(k)) return {ci,pi,qi,key:k}; } } }
+        if(VOICE.have.has(k)) return {ci,pi,qi,key:k}; } } }
   return null; })()"""
+PICK_END = """(()=>{ const cs=Object.keys(CASES);        // 엔딩 글에 음성이 있는 사건 (없으면 첫 사건)
+  for(let ci=0;ci<cs.length;ci++) if(VOICE.have.has(VOICE.key('내레이션', CASES[cs[ci]].ending.text))) return {ci,has:true};
+  return {ci:0,has:false}; })()"""
+UNLOCK = "G.clues=new Set(Object.keys(G.C.CLUES)); Object.keys(G.C.TESTI).forEach(t=>G.testis.add(t)); G.renderHub()"
 PICK_TRIPLE = """(()=>{ const cs=Object.keys(CASES);    // 표준 프롤로그에서 음성 있는 줄이 셋 이어지는 곳
   for(let ci=0;ci<cs.length;ci++){ const L=CASES[cs[ci]].PROLOGUE, K=L.map(l=>VOICE.key(l.name.split(' · ')[0], l.text));
     for(let i=0;i+2<L.length;i++) if(K.slice(i,i+3).every(k=>VOICE.have.has(k))) return {ci,ck:cs[ci],i,k:K}; }
@@ -102,7 +108,9 @@ def next_line(pg):
 
 
 def ask(pg, ans, menu_open=False):
-    if not menu_open: pg.click('#talkMenuBtn')
+    if not menu_open:
+        pg.evaluate(UNLOCK)        # 고른 질문이 단서·증언을 요구할 수 있다 — 상태를 채워 잠금을 푼다(허브에서만)
+        pg.click('#talkMenuBtn')
     pg.click(f"#hubGrid .room-card >> nth={ans['pi']}"); pg.click(f"#talkQs .q-btn >> nth={ans['qi']}")
 
 
@@ -233,6 +241,11 @@ def main():
     except Exception:
         print('로컬 서버가 없다 — 저장소 루트에서: python3 -m http.server 8899'); return 2
     section('W0 정합성')
+    # 8899 에 다른 폴더의 서버가 떠 있으면 이 저장소가 아니라 그쪽을 검사하게 된다 — 먼저 확인한다.
+    same = urllib.request.urlopen(BASE, timeout=5).read() == (ROOT / 'index.html').read_bytes()
+    check('localhost:8899 가 이 폴더의 index.html 을 서비스한다', same)
+    if not same:
+        print('8899 의 서버가 다른 폴더를 서비스하고 있다 — 이 저장소 루트에서 다시 띄운다'); return 2
     extra = [x for x in sys.argv[1:] if x == '--allow-unvoiced']
     r = subprocess.run([sys.executable, str(ROOT / 'tools/build-voice.py'), 'check', *extra], capture_output=True, text=True)
     check('build-voice.py check — 대사 ↔ 목록 ↔ 파일 ↔ 대본 ↔ 원본(해시)', r.returncode == 0,
@@ -308,7 +321,7 @@ def main():
                   and pg.evaluate("G.$('talkAnswer').style.display") == 'none', st(pg))
         else:
             for nm in ('[인물 선택으로] — 답변 음성 정지', 'backToLobby — 답변 패널 닫힘·음성 정지'):
-                skip(nm, '처음부터 열려 있는 음성 있는 답변이 없다')
+                skip(nm, '음성 있는 심문 답변이 하나도 없다')
         # 허브의 [로비로] (실제 클릭)
         start(pg, 0, True); dialog(pg, 'W3', [])
         pg.click('#scr-hub .btn.back'); pg.wait_for_timeout(80)
@@ -334,22 +347,22 @@ def main():
         pg.click('#simLobbyBtn'); pg.click('#simLobbyBtn'); pg.wait_for_timeout(3200)
         check('재현 2press 이탈 — 3초 뒤에도 로비·무음·누출음 꺼짐',
               active(pg) == 'scr-lobby' and silent(pg) and pg.evaluate('SND.wantHiss') is False, st(pg))
-        # 엔딩 글이 낭독되는 중에 [다른 사건 파일]
-        start(pg, 0, True); dialog(pg, 'W3', []); pg.evaluate(ready)
+        # 엔딩 글이 낭독되는 중에 [수사관 임명장] / [다른 사건 파일] — 엔딩 글에 음성이 있는 사건에서 본다
+        end = pg.evaluate(PICK_END)
+        start(pg, end['ci'], True); dialog(pg, 'W3', []); pg.evaluate(ready)
         pg.click('#deduceBtn'); dialog(pg, 'W3', [])
-        for _ in range(n):
+        for _ in range(pg.evaluate('G.DQ.length')):
             pg.keyboard.press(str(pg.evaluate('G.DQ[G.deduceIdx].ans') + 1)); pg.wait_for_timeout(1750)
         sim_then_reveal(pg, 'W3', [])
-        end_has = pg.evaluate("VOICE.have.has(VOICE.key('내레이션', G.C.ending.text))")
         told = ending_voice(pg)
         pg.click('#certBtn', no_wait_after=True); pg.wait_for_timeout(300); kept = st(pg)
         pg.click('#scr-end .btn >> nth=1'); pg.wait_for_timeout(80)
         left = active(pg) == 'scr-lobby' and silent(pg)
-        if end_has:
+        if end['has']:
             check('엔딩 글 낭독 중 [수사관 임명장]은 음성을 끊지 않고, [다른 사건 파일]은 끊는다',
                   told and not kept['paused'] and left, (told, kept, st(pg)))
         else:
-            skip('엔딩 글 낭독 중 [수사관 임명장]은 음성을 끊지 않는다', '이 사건의 엔딩 글에 음성이 없다')
+            skip('엔딩 글 낭독 중 [수사관 임명장]은 음성을 끊지 않는다', '엔딩 글에 음성이 있는 사건이 없다')
             check('엔딩(음성 없음) → [다른 사건 파일] — 로비·무음', told and left, st(pg))
 
         section('W4 같은 질문 다시 묻기')
@@ -377,7 +390,7 @@ def main():
         else:
             for nm in ('닫았다가 다시 물으면 처음부터 다시 재생', '답변이 떠 있는 채로 다시 눌러도 처음부터 재생',
                        '사운드 끄면 음성도 muted, 다시 켜면 풀린다', '음량은 파일에 구워져 있다 — 재생 중 volume 은 1 그대로'):
-                skip(nm, '처음부터 열려 있는 음성 있는 답변이 없다')
+                skip(nm, '음성 있는 심문 답변이 하나도 없다')
 
         section('W6 고친 대사')
         if tri:
@@ -457,6 +470,11 @@ def main():
     if BAD:
         for x in BAD: print('  FAIL ' + x)
         return 1
+    if SKIP:
+        # 건너뛴 검사는 '통과'가 아니다 — 그 동작은 이번 실행에서 확인되지 않았다.
+        print(f'PASS(부분) — 실패는 없지만 {len(SKIP)}건은 음성 없는 줄 때문에 검사하지 못했다:')
+        for x in SKIP: print('  --   ' + x)
+        return 0
     print('PASS — 대사 음성 검증 전부 통과')
     return 0
 

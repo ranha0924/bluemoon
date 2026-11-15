@@ -16,6 +16,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "2b645a3feed5ce3f",
+   "diffs": {}
   }
  },
  "00f6754f": {
@@ -35,6 +39,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "76055d6bbaa9a75c",
+   "diffs": {}
   }
  },
  "01939e0d": {
@@ -54,6 +62,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "dfee93bea80de180",
+   "diffs": {}
   }
  },
  "0201d87c": {
@@ -73,6 +85,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "cdf4432a08fec373",
+   "diffs": {}
   }
  },
  "064582c4": {
@@ -92,6 +108,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "72abb50232b23d54",
+   "diffs": {}
   }
  },
  "07e4a8bb": {
@@ -111,6 +131,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "dca6d5b48a6fd096",
+   "diffs": {}
   }
  },
  "0e565ade": {
@@ -124,12 +148,16 @@
   "dur": 11.89,
   "heard": "캔은 제조 3년을 넘긴 채 60도 트럭 짐칸에서 여름을 난 재고였습니다. 부푼 캔을 빼려던 한여름 씨는 범인이 아니라 유일하게 수칙을 지키려던 사람이고요.",
   "score": 0.992,
-  "asset": "3e500893b747f71d",
+  "asset": "4553f13d2b35d8b6",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "4553f13d2b35d8b6",
+   "diffs": {}
   }
  },
  "0ebdc736": {
@@ -149,6 +177,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "a072d70b653fe255",
+   "diffs": {}
   }
  },
  "1551e2c0": {
@@ -168,6 +200,17 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "9e45d88392e59b12",
+   "diffs": {
+    "시설에의무→시설의의무": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "213ec5a0": {
@@ -181,12 +224,16 @@
   "dur": 11.65,
   "heard": "침입 경로는 배기통입니다. 빠진 연결부, 눈에 찌그러진 끝, 둥지로 막힌 속. 점검 3종이 전부 무너져 배기가스가 실내로 되돌아왔죠.",
   "score": 1.0,
-  "asset": "aa8ea4af4843a4b2",
+  "asset": "97191f5148d420f6",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "97191f5148d420f6",
+   "diffs": {}
   }
  },
  "2475f427": {
@@ -218,12 +265,16 @@
   "dur": 9.4,
   "heard": "네, 불판을 올려드리고 캔을 끼웠어요. 하지만 맹세코 시키는 대로 했을 뿐이에요. 제가 왜 일부러 그러겠어요?",
   "score": 1.0,
-  "asset": "5775ccd5f6934f16",
+  "asset": "7f43d7a8e3308ba7",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "7f43d7a8e3308ba7",
+   "diffs": {}
   }
  },
  "2b541913": {
@@ -243,6 +294,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "017b3e4f9b0c48c8",
+   "diffs": {}
   }
  },
  "2e913d44": {
@@ -262,6 +317,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "1c25dd11b9d6d9ff",
+   "diffs": {}
   }
  },
  "30bc7cbe": {
@@ -275,12 +334,16 @@
   "dur": 8.75,
   "heard": "부탄캔은 저절로 터지지 않는다. 터질 조건을 사람이 만들었을 뿐. 가스 사고 조사 파일 첫 장을 연다.",
   "score": 1.0,
-  "asset": "5d0da56a4570857e",
+  "asset": "8f4f8786acc0fce6",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "8f4f8786acc0fce6",
+   "diffs": {}
   }
  },
  "336c8836": {
@@ -312,12 +375,16 @@
   "dur": 6.61,
   "heard": "아니다. 찬바람을 한번 쐬고 머리를 식히자. 수첩을 다시 펼치면 길이 보인다.",
   "score": 1.0,
-  "asset": "53430074ec4c6163",
+  "asset": "9110e195415cdc48",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "9110e195415cdc48",
+   "diffs": {}
   }
  },
  "33ee0a1d": {
@@ -337,6 +404,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "db04d4b6c815dd14",
+   "diffs": {}
   }
  },
  "3590e1f8": {
@@ -356,6 +427,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "3b241f03e8ca7aec",
+   "diffs": {}
   }
  },
  "36cd4d7c": {
@@ -375,6 +450,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "03fb71309f301f2a",
+   "diffs": {}
   }
  },
  "36d2671f": {
@@ -388,12 +467,16 @@
   "dur": 6.92,
   "heard": "부탄캔은 저절로 터지지 않는다. 단서 여덟 개와 목격담을 모아 파열음의 원인을 가려내자.",
   "score": 1.0,
-  "asset": "73bf403c563c1e64",
+  "asset": "f65a205c2da55db9",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "f65a205c2da55db9",
+   "diffs": {}
   }
  },
  "3ad82ca3": {
@@ -407,12 +490,29 @@
   "dur": 10.61,
   "heard": "목말라서 물 들어요. 근데 냄비 밑에 불이 이상했어요. 우리 집 가스불은 파란색인데 여기 건 노랗고 흐물흐물 흔들렸어요.",
   "score": 0.938,
-  "asset": "ffd7bc7aa79a7526",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "asset": "ffd7bc7aa79a7526",
+  "probe": {
+   "asset": "ffd7bc7aa79a7526",
+   "diffs": {
+    "비밑의불이→비밑에불이": [
+     0,
+     10,
+     25,
+     50
+    ],
+    "서물뜨러요근→서물들어요근": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "3b22a773": {
@@ -444,12 +544,16 @@
   "dur": 6.27,
   "heard": "단서 여덟 개를 모으고 사람들의 이야기를 들은 뒤 이 파열음의 진짜 원인을 가려내자.",
   "score": 1.0,
-  "asset": "c7ed435b308c582f",
+  "asset": "4107df4c13dbf166",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "4107df4c13dbf166",
+   "diffs": {}
   }
  },
  "3da2decc": {
@@ -469,6 +573,17 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "47099616d5916f86",
+   "diffs": {
+    "션설래원손→션설레원손": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "3eb218fd": {
@@ -488,6 +603,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "594db2cb4a2adb06",
+   "diffs": {}
   }
  },
  "4421eebb": {
@@ -525,6 +644,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "38284cafc4365dd6",
+   "diffs": {}
   }
  },
  "4f42dc37": {
@@ -538,12 +661,16 @@
   "dur": 9.25,
   "heard": "경보기는 5년마다, 점검은 1년마다, 환기는 두세 시간마다. 보이지 않는 손님은 보이는 습관이 막는다.",
   "score": 0.951,
-  "asset": "9a715d77be477a4a",
+  "asset": "ac1d99cce328339f",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "ac1d99cce328339f",
+   "diffs": {}
   }
  },
  "50f3463c": {
@@ -563,6 +690,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "a1047882579be5ee",
+   "diffs": {}
   }
  },
  "51e8beb5": {
@@ -582,6 +713,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "7e779b461de2ade4",
+   "diffs": {}
   }
  },
  "53020af3": {
@@ -601,6 +736,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "3c3600c3a4b288c5",
+   "diffs": {}
   }
  },
  "54ffb5ad": {
@@ -614,12 +753,16 @@
   "dur": 9.64,
   "heard": "경보기는 5년마다, 점검은 1년마다, 환기는 두세 시간마다. 보이지 않는 손님을 막는 것은 보이는 습관들이다.",
   "score": 0.955,
-  "asset": "22bb42b74aa50709",
+  "asset": "6ca0fd3fe5261bb7",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "6ca0fd3fe5261bb7",
+   "diffs": {}
   }
  },
  "55174d14": {
@@ -639,6 +782,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "90f76eae20d4482d",
+   "diffs": {}
   }
  },
  "554825eb": {
@@ -658,6 +805,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "d1abb09ac94be418",
+   "diffs": {}
   }
  },
  "567dddf5": {
@@ -677,6 +828,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "df97445f14825e9e",
+   "diffs": {}
   }
  },
  "56a161cc": {
@@ -732,6 +887,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "ea2dc2976b63145d",
+   "diffs": {}
   }
  },
  "5bea1849": {
@@ -751,6 +910,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "00cb0ba288123725",
+   "diffs": {}
   }
  },
  "5fc29d44": {
@@ -764,12 +927,16 @@
   "dur": 8.12,
   "heard": "냄새 없이 사람을 쓰러뜨리는 손님이 하나 있지. 무색, 무취, 아무도 초대한 적 없는 다섯 번째 손님.",
   "score": 1.0,
-  "asset": "e97dbf1fbd31e8f2",
+  "asset": "7f0eaa9bfd2758cb",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "7f0eaa9bfd2758cb",
+   "diffs": {}
   }
  },
  "6099644e": {
@@ -789,6 +956,17 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "ba6151dbf86f0856",
+   "diffs": {
+    "의바비큐그→의바베큐그": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "6441a2ef": {
@@ -808,6 +986,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "419f6b6782730603",
+   "diffs": {}
   }
  },
  "64b7e6bb": {
@@ -827,6 +1009,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "b7f60fcf9378d423",
+   "diffs": {}
   }
  },
  "665d1132": {
@@ -840,12 +1026,16 @@
   "dur": 8.12,
   "heard": "단서는 모두 모였다. 이 사고는 우연이 아니라 겹겹의 부주의였다. 모두 화로터로 모여주시죠.",
   "score": 1.0,
-  "asset": "c0b0567b0aaf5f14",
+  "asset": "dfe766104ea56a0a",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "dfe766104ea56a0a",
+   "diffs": {}
   }
  },
  "6bd718dc": {
@@ -865,6 +1055,17 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "5731c4e2e394fcbe",
+   "diffs": {
+    "마침묵고계→마침묻고계": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "6e38f5c9": {
@@ -896,12 +1097,16 @@
   "dur": 10.19,
   "heard": "그리고 온수철 씨, 당신은 용의자가 아니라 이 사건의 구조자입니다. 냄새 없는 두통에서 일산화탄소를 의심하고 모두를 깨웠으니까요.",
   "score": 1.0,
-  "asset": "1972689f425e695a",
+  "asset": "1be7c067beb10076",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "1be7c067beb10076",
+   "diffs": {}
   }
  },
  "6fbd1b40": {
@@ -921,6 +1126,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "53bb89f37ecb0a15",
+   "diffs": {}
   }
  },
  "70fd0cbe": {
@@ -934,12 +1143,23 @@
   "dur": 9.87,
   "heard": "우리 매점 재고요. 박스째 싸게 들여온 게 3년 전인데 버리긴 아깝고. 서비스로 한 통씩 돌렸습니다. 케냐 다 거기서 거기 아닙니까?",
   "score": 0.951,
-  "asset": "85b8f1b00de1e460",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "asset": "85b8f1b00de1e460",
+  "probe": {
+   "asset": "85b8f1b00de1e460",
+   "diffs": {
+    "니다캔이야다거→니다케냐다거": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "72fbe528": {
@@ -959,6 +1179,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "fe8cb725ab83d4e3",
+   "diffs": {}
   }
  },
  "7539bca3": {
@@ -978,6 +1202,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "532e1ba2d1d213d0",
+   "diffs": {}
   }
  },
  "76d4766c": {
@@ -1033,6 +1261,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "6f232972f62a1d40",
+   "diffs": {}
   }
  },
  "7c9f1815": {
@@ -1052,6 +1284,14 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "7a4c9745cf32ec0d",
+   "diffs": {
+    "전부거둬들였→전부걷어들였": [
+     10
+    ]
+   }
   }
  },
  "7d8ea07d": {
@@ -1071,6 +1311,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "1f4afd678ec2512f",
+   "diffs": {}
   }
  },
  "817a009c": {
@@ -1126,6 +1370,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "304786790d536317",
+   "diffs": {}
   }
  },
  "87147b2a": {
@@ -1145,6 +1393,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "e8c0fd87f534e9a2",
+   "diffs": {}
   }
  },
  "87ef5f7e": {
@@ -1164,6 +1416,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "6225652b7455f121",
+   "diffs": {}
   }
  },
  "8a22097b": {
@@ -1177,12 +1433,20 @@
   "dur": 9.17,
   "heard": "범인의 이름은 일산화탄소. 색도 냄새도 없이 피 속에서 산소의 자리를 먼저 차지하는 보이지 않는 손님입니다.",
   "score": 1.0,
-  "asset": "62b6f6aa88413325",
+  "asset": "795d2fdde616d438",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "795d2fdde616d438",
+   "diffs": {
+    "없이피속에→없이핏속에": [
+     25
+    ]
+   }
   }
  },
  "8c7122bb": {
@@ -1220,6 +1484,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "bc305c3e8b28d418",
+   "diffs": {}
   }
  },
  "8cb648bb": {
@@ -1239,6 +1507,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "f51f050e9f6d20d6",
+   "diffs": {}
   }
  },
  "90829f5d": {
@@ -1258,6 +1530,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "e8e06243650cc1d2",
+   "diffs": {}
   }
  },
  "90d7674d": {
@@ -1277,6 +1553,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "6a714b2bd432d115",
+   "diffs": {}
   }
  },
  "911010f7": {
@@ -1290,12 +1570,23 @@
   "dur": 7.08,
   "heard": "파열음보다 빨랐던 12살의 외침. 안전교육은 언제나 사고보다 빨라야 한다.",
   "score": 0.935,
-  "asset": "e0c3b65fe41ca8ea",
+  "asset": "2bcea6c23733413a",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "2bcea6c23733413a",
+   "diffs": {
+    "(화면에 없는 숫자·영문)→12": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "93ee39d3": {
@@ -1315,6 +1606,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "748899c0424b1347",
+   "diffs": {}
   }
  },
  "96a0bade": {
@@ -1328,12 +1623,16 @@
   "dur": 6.92,
   "heard": "성급했다. 랜턴을 다시 켜고 수첩을 처음부터 훑자. 사고 원인은 도망가지 않는다.",
   "score": 1.0,
-  "asset": "781e406bd6310b05",
+  "asset": "ceb954f96f050421",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "ceb954f96f050421",
+   "diffs": {}
   }
  },
  "9759c5b2": {
@@ -1353,6 +1652,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "1a3eec9fc55a47cc",
+   "diffs": {}
   }
  },
  "97b01489": {
@@ -1366,12 +1669,23 @@
   "dur": 7.0,
   "heard": "파열음보다 빨랐던 12살의 외침. 안전교육은 언제나 사고보다 빨라야 한다.",
   "score": 0.935,
-  "asset": "7e02e664c4fa0ce2",
+  "asset": "0adba1008a622360",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "0adba1008a622360",
+   "diffs": {
+    "(화면에 없는 숫자·영문)→12": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "97fed309": {
@@ -1391,6 +1705,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "dc1e5af87a5dab8a",
+   "diffs": {}
   }
  },
  "983a10bb": {
@@ -1410,6 +1728,17 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "c7247f7fff229d9b",
+   "diffs": {
+    "혔다설래원의→혔다선례원의": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "9cb996d1": {
@@ -1423,12 +1752,16 @@
   "dur": 7.47,
   "heard": "냄새 없이 사람을 쓰러뜨리는 다섯 번째 손님이 있지. 단서 여덟 개와 증언으로 침입 경로를 밝혀내자",
   "score": 1.0,
-  "asset": "283fa45fdbbf22ed",
+  "asset": "ed5aa909dba385fa",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "ed5aa909dba385fa",
+   "diffs": {}
   }
  },
  "9d5441ff": {
@@ -1442,12 +1775,16 @@
   "dur": 9.33,
   "heard": "그리고 한여름 씨, 당신은 범인이 아니라 유일하게 수칙을 지키려던 사람입니다. 부푼 캔을 빼려던 그 손이 옳았습니다.",
   "score": 1.0,
-  "asset": "284305e84fafeaff",
+  "asset": "c00fa6631b94ea40",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "c00fa6631b94ea40",
+   "diffs": {}
   }
  },
  "9e6ac151": {
@@ -1479,12 +1816,16 @@
   "dur": 10.68,
   "heard": "범인의 이름은 일산화탄소. 색도 냄새도 없이 피 속에서 산소가 앉을 자리, 헤모글로빈을 먼저 차지하는 보이지 않는 손님입니다.",
   "score": 1.0,
-  "asset": "ffa23f21f1bf387c",
+  "asset": "6aa3a0b482ddfa18",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "6aa3a0b482ddfa18",
+   "diffs": {}
   }
  },
  "a3a48b3f": {
@@ -1504,6 +1845,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "be1b8f9827a8c6d0",
+   "diffs": {}
   }
  },
  "a4e9f6fe": {
@@ -1523,6 +1868,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "2623b59d03abb615",
+   "diffs": {}
   }
  },
  "a4f22217": {
@@ -1542,6 +1891,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "700f12860a687946",
+   "diffs": {}
   }
  },
  "a56bd81c": {
@@ -1561,6 +1914,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "9f054ca6248416ab",
+   "diffs": {}
   }
  },
  "ab4c1681": {
@@ -1580,6 +1937,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "acce563d5b830f7d",
+   "diffs": {}
   }
  },
  "aca4f3bc": {
@@ -1599,6 +1960,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "a6ce8a2b4a3772a7",
+   "diffs": {}
   }
  },
  "ae6f73a5": {
@@ -1654,6 +2019,17 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "2cfaa36932622920",
+   "diffs": {
+    "리바비큐가→리바베큐가": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  },
  "b679f0d8": {
@@ -1667,12 +2043,16 @@
   "dur": 7.08,
   "heard": "단서 여덟 개와 증언이 필요하다. 그 손님이 어디로 들어왔는지, 왜 아무도 몰랐는지 밝혀내자.",
   "score": 1.0,
-  "asset": "bdefeff1f1184e20",
+  "asset": "48a0d1f5d8036c49",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "48a0d1f5d8036c49",
+   "diffs": {}
   }
  },
  "b7889bea": {
@@ -1686,12 +2066,20 @@
   "dur": 7.55,
   "heard": "단서는 모두 모였다. 보이지 않는 손님의 정체를 밝힐 시간이다. 모두 1층 난롯가로 모여주시죠.",
   "score": 1.0,
-  "asset": "f3ec1f86aafdba9e",
+  "asset": "f96e19c468db63f0",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "f96e19c468db63f0",
+   "diffs": {
+    "층난롯가로→층난로가로": [
+     10
+    ]
+   }
   }
  },
  "ba76aeb4": {
@@ -1711,6 +2099,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "c31295cd0889a860",
+   "diffs": {}
   }
  },
  "be9816cc": {
@@ -1724,12 +2116,16 @@
   "dur": 8.67,
   "heard": "범인은 한 사람이 아니라 겹겹이 쌓인 안전불감증입니다. 방아쇠는 삼발이보다 큰 불판의 복사열이었죠.",
   "score": 1.0,
-  "asset": "5e91a400bdc38065",
+  "asset": "b1cae2c0977a3b2e",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "b1cae2c0977a3b2e",
+   "diffs": {}
   }
  },
  "c138902a": {
@@ -1749,6 +2145,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "ec37ea32a64acd39",
+   "diffs": {}
   }
  },
  "c5aa47c2": {
@@ -1840,6 +2240,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "e81ef908d97b2226",
+   "diffs": {}
   }
  },
  "d2c81353": {
@@ -1853,12 +2257,16 @@
   "dur": 7.71,
   "heard": "캔이 좀 부풀어 보여서 무서웠어요. 그래서 새 캔으로 바꾸자고 말씀드렸던 거예요. 그런데",
   "score": 1.0,
-  "asset": "41c2c24b65df9896",
+  "asset": "edeae27b927d0d92",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "edeae27b927d0d92",
+   "diffs": {}
   }
  },
  "d5c631bc": {
@@ -1878,6 +2286,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "a7025f31b742c2d7",
+   "diffs": {}
   }
  },
  "d9d48a10": {
@@ -1897,6 +2309,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "e828a503f6842021",
+   "diffs": {}
   }
  },
  "dbf98c0e": {
@@ -1916,6 +2332,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "beec26d25c89d027",
+   "diffs": {}
   }
  },
  "de02ebbb": {
@@ -1971,6 +2391,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "b9a955d24c5b0ec3",
+   "diffs": {}
   }
  },
  "e1068e6f": {
@@ -1984,12 +2408,16 @@
   "dur": 9.87,
   "heard": "삼발이보다 큰 불판이 복사열로 캔을 데웠습니다. 그 캔은 제조 3년을 넘긴 채 60도 트럭 짐칸에서 여름을 난 재고였고요.",
   "score": 0.99,
-  "asset": "cceffb7e2bf8753d",
+  "asset": "3e14828afc135c75",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "3e14828afc135c75",
+   "diffs": {}
   }
  },
  "e23de203": {
@@ -2003,12 +2431,16 @@
   "dur": 14.52,
   "heard": "침입 경로는 배기통, 이탈, 찌그러짐, 막힘 3종이 전부 무너졌습니다. 수명 지난 경보기는 건전지마저 빠져 있었고, 온수철 씨는 용의자가 아니라 모두를 깨운 구조자였죠.",
   "score": 1.0,
-  "asset": "87074d19145b1132",
+  "asset": "c52e551d1a5fbc74",
   "params": {
    "stability": 0.5,
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "c52e551d1a5fbc74",
+   "diffs": {}
   }
  },
  "e394b130": {
@@ -2028,6 +2460,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "59c48d5c3c555620",
+   "diffs": {}
   }
  },
  "e68c8748": {
@@ -2047,6 +2483,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "b087ab5c9fd0fdc8",
+   "diffs": {}
   }
  },
  "e72e3564": {
@@ -2084,6 +2524,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "afe7bb21d5f3f52a",
+   "diffs": {}
   }
  },
  "ec528641": {
@@ -2103,6 +2547,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "2783d84a2ddda101",
+   "diffs": {}
   }
  },
  "ed3e6f27": {
@@ -2122,7 +2570,11 @@
   "dur": 10.37,
   "heard": "결론부터 말씀드리죠. 이 사고의 범인은 한 사람이 아닙니다. \"설마 괜찮겠지\"가 다섯 겹으로 쌓인 안전불감증입니다.",
   "score": 1.0,
-  "asset": "d104dbb5dd276663"
+  "asset": "c4ae03665cabb0d1",
+  "probe": {
+   "asset": "c4ae03665cabb0d1",
+   "diffs": {}
+  }
  },
  "efc06b0d": {
   "who": "한세인",
@@ -2177,6 +2629,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "d3785dc797e5340b",
+   "diffs": {}
   }
  },
  "f52f65c4": {
@@ -2196,6 +2652,10 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "2538b7c80fe37842",
+   "diffs": {}
   }
  },
  "fc2acccf": {
@@ -2209,13 +2669,18 @@
    "output_format": "mp3_44100_128"
   },
   "tts": "네! 부푼 캔을 빼려는데 옆 사이트 아저씨가, '가스 반이나 남았는데 아깝게 왜 바꾸냐'며 도로 끼우게 했어요. 잔가스 아끼려다 큰일 난다는 걸 다들 몰라요.",
-  "sha256": "0b9f27ffaa4122b3",
-  "take": 1,
-  "seed": 4230671294,
-  "dur": 12.67,
-  "heard": "네, 부푼 캔을 빼려는데 옆 사이트 아저씨가 \"가스 반이나 남았는데 아깝게 왜 바꾸냐?\"며 도로 끼우게 했어요. 잔가스 아끼려다 큰일 난다는 걸 다들 몰라요.",
+  "sha256": "6e0102d99f2cb79d",
+  "take": 2,
+  "seed": 4230679213,
+  "dur": 12.51,
+  "heard": "네, 부푼캔을 빼려는데 옆 사이트 아저씨가 \"가스 반이나 남았는데 아깝게 왜 바꾸냐?\"며 도로 끼우게 했어요. 잔가스 아끼려다 큰일 난다는 걸 다들 몰라요.",
   "score": 1.0,
-  "asset": "a6efca7da9927fdc"
+  "diffs": [],
+  "asset": "4dd5d654a58cebc5",
+  "probe": {
+   "asset": "4dd5d654a58cebc5",
+   "diffs": {}
+  }
  },
  "fd962baa": {
   "who": "구백동",
@@ -2234,6 +2699,14 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "f43aa4855cd2c19f",
+   "diffs": {
+    "요삼발이보다→요삼바리보다": [
+     0
+    ]
+   }
   }
  },
  "ffc2489e": {
@@ -2253,6 +2726,17 @@
    "similarity_boost": 0.75,
    "language_code": "ko",
    "output_format": "mp3_44100_128"
+  },
+  "probe": {
+   "asset": "8e901e49768e8863",
+   "diffs": {
+    "션설래원새→션설레원새": [
+     0,
+     10,
+     25,
+     50
+    ]
+   }
   }
  }
 }

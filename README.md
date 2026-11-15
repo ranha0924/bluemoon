@@ -175,8 +175,8 @@ const CASES = { case1:CASE1, case2:CASE2, case3:CASE3 };
 심문 화면의 **질문 선택지(탐정의 질문 24줄)** 는 싣지 않았다 — 질문을 먼저 읽으면 정작 증인의
 답변 음성이 2초가량 늦게 시작해, 글을 읽고 바로 닫는 사람은 답변을 듣지 못한다. 음성은
 `tools/voice/masters/`에 합성해 두었으므로(`script.json`의 `ship:false`) 넣기로 하면 재합성 없이 켤 수 있다.
-그 밖의 화면 글 — 추리 문항·해설, 사고 재현의 지문·해설, 수첩의 단서·증언 요약, 3D 증거 조사의
-안내 문구, 엔딩의 수칙 요약 카드 — 은 음성 대상이 아니다.
+음성은 이 범위가 전부다. 그 밖의 화면 글 — 이를테면 로비의 사건 소개, 인물 소개, 추리 문항·해설,
+사고 재현의 지문·선택지·해설, 수첩, 3D 증거 조사 안내, 토스트, 엔딩의 수칙 요약 카드 — 은 소리가 없다.
 
 - **실행 중에는 아무것도 합성하지 않는다.** ElevenLabs TTS(`eleven_v4`)로 한 번 합성해
   `assets/voice/<키>.mp3`로 커밋한 파일을 틀 뿐이다 — API 호출도 외부 요청도 없다.
@@ -190,23 +190,32 @@ const CASES = { case1:CASE1, case2:CASE2, case3:CASE3 };
 python3 tools/build-voice.py check       # 대사 ↔ 목록(VOICE_HAVE) ↔ 파일 ↔ 대본 ↔ 원본 정합성 (해시 대조 포함)
 python3 tools/build-voice.py encode      # 원본 → assets/voice (화자별 음량 통일, 48kbps 모노)
 python3 tools/build-voice.py manifest    # index.html 의 VOICE_HAVE 한 줄 갱신
-python3 tools/build-voice.py prune       # 대사가 바뀌어 주인이 없어진 assets/voice 파일 삭제
+python3 tools/build-voice.py prune       # 탑재 대상을 지금 대사에 맞춘다(주인 없는 줄은 내리고, 되돌아온 줄은 되살린다)
 python3 tools/verify-voice.py            # check + 게임 안에서 실제 입력으로 재생·정지 검증 (서버 8899 필요)
 ELEVENLABS_API_KEY=… python3 tools/build-voice.py fetch   # 새로 합성 (키는 환경 변수로만)
+ELEVENLABS_API_KEY=… python3 tools/build-voice.py probe   # 탑재 파일을 받아써 글과 낱말이 다르게 들리는 줄 찾기
 ```
 
 `check`는 파일 이름만 보지 않는다 — `takes.json`에 적어 둔 원본·탑재 파일의 sha256, 합성에 쓴
 낭독문·목소리·설정과 대조해, 이름은 맞는데 내용이 뒤바뀐 파일과 대본이나 배역을 바꿔 놓고 다시
 합성하지 않은 원본을 잡는다. 다만 기준은 그 기록이다 — 소리가 정말 그 문장인지는 받아쓰기와
 사람의 귀로 본다. 대사를 고쳐 그 줄의 음성을 포기하기로 했다면 `prune` → `manifest` →
-`verify-voice.py --allow-unvoiced` 순이다(그 줄에 기대던 검사는 실패가 아니라 '건너뜀'으로 적힌다).
+`verify-voice.py --allow-unvoiced` 순이다. `prune`은 그 줄을 대본에서도 내려(`ship:false`·`pruned:true`)
+다음 `encode`가 되살리지 않게 하고, 대사를 원래대로 되돌린 뒤 다시 `prune`하면 되살린다(이어서
+`encode` → `manifest`). 음성 검증은 검사에 쓸 줄을 페이지에서 고르므로 몇 줄을 고쳐도 그대로 돈다 —
+음성 있는 줄이 아예 없어 못 한 검사가 있으면 마지막 줄이 `PASS(부분)`으로 바뀐다.
 
 낭독 대본(`tools/voice/script.json`의 `tts`)은 화면 표기와 다르다 — 숫자와 단위를 한글로
 풀고(`60℃`→육십 도, `2~3시간`→두세 시간, `6.75배`→육 점 칠오 배), 지문 `(고개를 떨군다)`는
-읽지 않고 연기 태그(`[sighs]`)로 바꿨다. 합성 뒤 모든 줄을 음성→텍스트로 되받아써 대조했고
-(`takes.json`의 `heard`·`score`), 탑재 파일은 시작 위치를 0·10·25ms 밀어 가며 다시 받아써
-낱말이 뒤집히는 줄(발음이 경계선인 줄 — 예: '범인은'↔'범위는')을 다시 뽑았다
-(`python3 tools/build-voice.py probe`). 받아쓰기는 귀를 대신하지 못한다 — 연기와 배역은 직접 듣고 정한다.
+읽지 않고 연기 태그(`[sighs]`)로 바꿨다. 합성 뒤 모든 줄을 음성→텍스트로 되받아써 대조했다
+(`takes.json`의 `heard`·`score`). 일치도만으로는 낱말 하나가 바뀐 것을 못 잡으므로('범인은'→'범위는'도
+0.98 이다), **탑재되는 파일**을 시작 위치만 0·10·25·50ms 밀어 가며 다시 받아써 낭독문과 낱말이 다르게
+적히는 곳을 찾는다(`probe` — 결과는 `takes.json`의 `probe`). `fetch`도 같은 방식으로 테이크를 고른다.
+받아쓰기는 귀를 대신하지 못한다 — 같은 소리를 다른 철자로 적기도 하고(설래원/설레원, 삼발이/삼바리,
+묵고/묻고), 드문 말을 흔한 말로 바꿔 적기도 한다. `probe`에 남는 줄은 오류 목록이 아니라 **들어 볼 줄**의
+목록이다. 철자만 다른 것을 빼면, 지금 낱말이 달리 적히는 줄은 나원래의 "캔이야 다 거기서 거기"(→'케냐')와
+김파랑의 "물 뜨러요"(→'들어요') 둘이다 — 각각 열 번 넘게 다시 뽑아도 똑같이 적혔다. 연기·배역과 함께
+직접 듣고 정한다.
 
 | 화자 | 목소리 (ElevenLabs Voice Library) |
 |---|---|

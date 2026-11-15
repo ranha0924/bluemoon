@@ -8,9 +8,10 @@
   python3 tools/build-voice.py check      # 정합성 검사 (API 키 불필요, 커밋 전 필수)
   python3 tools/build-voice.py encode     # 원본 → assets/voice/*.mp3 (API 키 불필요, 반복 가능)
   python3 tools/build-voice.py manifest   # index.html 의 VOICE_HAVE 한 줄 갱신
-  python3 tools/build-voice.py prune      # 대사가 바뀌어 주인이 없어진 assets/voice 파일 삭제(대본에서도 ship:false 로 내린다)
+  python3 tools/build-voice.py prune      # 탑재 대상을 지금 대사에 맞춘다 — 주인 없는 파일은 지우고 대본에서 내리며,
+                                          #   대사가 원래대로 돌아온 줄은 되살린다(그 뒤 encode → manifest)
   python3 tools/build-voice.py fetch      # 원본 합성 (ELEVENLABS_API_KEY 필요, 표준 라이브러리만 사용)
-  python3 tools/build-voice.py probe      # 발음이 경계선인 낱말 찾기 — 시작 위치를 조금씩 밀어 받아쓴다 (API 키 필요)
+  python3 tools/build-voice.py probe      # 탑재 파일을 받아써 낭독문과 낱말이 다르게 들리는 줄을 찾는다 (API 키 필요)
 
 파일
   tools/voice/script.json   대사별 {key, who, src, text(화면 표기), tts(낭독문), ship}
@@ -216,8 +217,14 @@ def cmd_check(a):
             bad.append(f'{k}.mp3 — 탑재 파일이 인코딩 기록과 다르다(뒤바뀜·손상?)  → python3 tools/build-voice.py encode')
     unvoiced = [l for k, l in spoken.items() if k not in files]
     for l in unvoiced:
-        (warn if a.allow_unvoiced else bad).append(
-            f"음성 없는 대사: {l['src']} ({l['who']}: {plain(l['text'])[:28]}…)")
+        back = by_key.get(l['key'], {}).get('pruned') or (by_key.get(l['key'], {}).get('ship') and (MASTERS / f"{l['key']}.mp3").is_file())
+        (warn if a.allow_unvoiced and not back else bad).append(
+            f"음성 없는 대사: {l['src']} ({l['who']}: {plain(l['text'])[:28]}…)"
+            + ('  → 원본이 있다: python3 tools/build-voice.py prune → encode → manifest' if back else ''))
+    on_page = {l['key'] for l in lines}
+    for e in sc:
+        if not e.get('ship') and not e.get('pruned') and e['key'] not in on_page:
+            warn.append(f"싣지 않는 원본의 대사가 index.html 에서 바뀌었다: {e['key']} ({e['who']}: {plain(e['text'])[:24]}…)")
 
     total = sum(p.stat().st_size for p in OUT.glob('*.mp3')) if OUT.is_dir() else 0
     print(f'대사 {len(spoken)}줄 중 음성 {len(spoken) - len(unvoiced)}줄 · 파일 {len(files)}개 {total / 1e6:.2f} MB '
@@ -243,17 +250,25 @@ def cmd_manifest(a):
 
 
 def cmd_prune(a):
+    """대본의 탑재 대상을 지금의 index.html 에 맞춘다(양방향).
+    - 대사가 바뀌어 주인이 없어진 줄: assets/voice 에서 지우고 대본에서 내린다(ship:false + pruned:true) —
+      그러지 않으면 다음 encode 가 방금 지운 파일을 되살린다.
+    - 내렸던 줄의 대사가 원래대로 돌아왔으면 되살린다 — 이어서 encode → manifest 를 돌리면 파일이 돌아온다."""
     spoken = {l['key'] for l in page_lines() if l['spoken']}
     sc = script()
+    revived = [e for e in sc if e.get('pruned') and e['key'] in spoken]
+    for e in revived:
+        e['ship'] = True; e.pop('pruned')
+    retired = [e for e in sc if e.get('ship') and e['key'] not in spoken]
+    for e in retired:
+        e['ship'] = False; e['pruned'] = True
     ship = {e['key'] for e in sc if e.get('ship')}
-    gone = [p for p in sorted(OUT.glob('*.mp3')) if p.stem not in spoken or p.stem not in ship]
+    gone = [p for p in sorted(OUT.glob('*.mp3')) if p.stem not in ship] if OUT.is_dir() else []
     for p in gone:
         print('삭제  ' + str(p.relative_to(ROOT))); p.unlink()
-    # 대본에서도 탑재 대상에서 내린다 — 그러지 않으면 다음 encode 가 방금 지운 파일을 되살린다.
-    retired = [e for e in sc if e.get('ship') and e['key'] not in spoken]
-    for e in retired: e['ship'] = False
-    if retired: dump(SCRIPT, sc)
-    print(f'{len(gone)}개 삭제 · 대본 {len(retired)}줄을 ship:false 로 — 원본(tools/voice/masters)은 남겨 둔다. 이어서 manifest 를 돌린다.')
+    if retired or revived: dump(SCRIPT, sc)
+    print(f'파일 {len(gone)}개 삭제 · 대본에서 내림 {len(retired)}줄 · 되살림 {len(revived)}줄 — 원본(tools/voice/masters)은 '
+          '그대로다. 이어서 ' + ('encode → ' if revived else '') + 'manifest 를 돌린다.')
     return 0
 
 
@@ -282,9 +297,34 @@ def trim_points(p):
     return (a, b) if b - a > 0.5 else (0.0, d)
 
 
+def speaker_gain(who, sc_all, extra=()):
+    """화자 단위 고정 이득(dB) — 그 화자의 원본 '전부'(싣지 않는 줄·내린 줄 포함)를 이어 붙여 잰다.
+    줄마다 정규화하면 속삭임과 외침이 같은 크기가 되어 연기가 눌리고, 탑재하는 줄만으로 재면 한 줄을
+    내리거나 되살릴 때마다 같은 화자의 다른 파일까지 바뀐다."""
+    srcs = [MASTERS / f"{e['key']}.mp3" for e in sc_all if e['who'] == who]
+    srcs = [p for p in srcs if p.is_file()] + list(extra)
+    i, tp = loud(srcs)
+    return TARGET_I - i, i, tp
+
+
+def encode_one(src, dst, gain):
+    """원본 하나를 탑재 형식으로 — 앞뒤 무음 다듬기 → 고정 이득 → 리미터(이득 뒤 봉우리가 상한을 넘을 때만 눌린다)
+    → 짧은 페이드 → 48kbps 모노 mp3. 길이 정보(Xing) 헤더는 남긴다."""
+    limit = 10 ** (PEAK_DB / 20)
+    t0, t1 = trim_points(src)
+    af = (f'atrim={t0:.3f}:{t1:.3f},asetpts=PTS-STARTPTS,volume={gain:.2f}dB,'
+          f'alimiter=limit={limit:.4f}:attack=3:release=60:level=disabled,'
+          f'afade=t=in:d=0.008,afade=t=out:st={max(0.0, t1 - t0 - 0.04):.3f}:d=0.04')
+    r = run(['ffmpeg', '-hide_banner', '-nostats', '-y', '-i', str(src), '-af', af, '-ac', '1', '-ar', '44100',
+             '-c:a', 'libmp3lame', '-b:a', BITRATE, '-map_metadata', '-1', '-fflags', '+bitexact',
+             '-flags:a', '+bitexact', '-id3v2_version', '0', str(dst)], text=True)
+    if r.returncode: die(f'인코딩 실패 {Path(src).name}:\n' + r.stderr[-400:])
+
+
 def cmd_encode(a):
     need_ffmpeg()
-    sc = [e for e in script() if e.get('ship')]
+    sc_all = script()
+    sc = [e for e in sc_all if e.get('ship')]
     miss = [e['key'] for e in sc if not (MASTERS / f"{e['key']}.mp3").is_file()]
     if miss: die(f'원본이 없는 대사 {len(miss)}줄: {miss[:5]} — fetch 가 먼저다')
     OUT.mkdir(parents=True, exist_ok=True)
@@ -293,22 +333,10 @@ def cmd_encode(a):
     for e in sc: by_who.setdefault(e['who'], []).append(e)
     total = 0
     for who, es in sorted(by_who.items()):
-        srcs = [MASTERS / f"{e['key']}.mp3" for e in es]
-        i, tp = loud(srcs)
-        gain = TARGET_I - i
-        # 화자 단위 고정 이득 — 줄마다 정규화하면 속삭임과 외침이 같은 크기가 되어 연기가 눌린다.
-        # 이득 뒤 피크가 상한을 넘는 화자만 리미터가 봉우리를 눌러 준다.
-        limit = 10 ** (PEAK_DB / 20)
-        for e, src in zip(es, srcs):
-            t0, t1 = trim_points(src)
-            af = (f'atrim={t0:.3f}:{t1:.3f},asetpts=PTS-STARTPTS,volume={gain:.2f}dB,'
-                  f'alimiter=limit={limit:.4f}:attack=3:release=60:level=disabled,'
-                  f'afade=t=in:d=0.008,afade=t=out:st={max(0.0, t1 - t0 - 0.04):.3f}:d=0.04')
+        gain, i, tp = speaker_gain(who, sc_all)
+        for e in es:
             dst = OUT / f"{e['key']}.mp3"
-            r = run(['ffmpeg', '-hide_banner', '-nostats', '-y', '-i', str(src), '-af', af, '-ac', '1', '-ar', '44100',
-                     '-c:a', 'libmp3lame', '-b:a', BITRATE, '-map_metadata', '-1', '-fflags', '+bitexact',
-                     '-flags:a', '+bitexact', '-id3v2_version', '0', str(dst)], text=True)
-            if r.returncode: die(f'인코딩 실패 {src.name}:\n' + r.stderr[-400:])
+            encode_one(MASTERS / f"{e['key']}.mp3", dst, gain)
             total += dst.stat().st_size
             takes.setdefault(e['key'], {})['asset'] = sha(dst)   # check 가 '이 파일이 이 원본의 인코딩인가'를 본다
         oi, otp = loud([OUT / f"{e['key']}.mp3" for e in es])
@@ -374,13 +402,49 @@ def score(heard, e):
     return max(difflib.SequenceMatcher(None, h, norm(x)).ratio() for x in (e['tts'], plain(e['text'])))
 
 
+# 받아쓰기는 소리를 글자로 '옮겨 적은 것'이라 일치도(score)만으로는 낱말 하나가 바뀐 것을 못 잡는다
+# ('범인은'→'범위는'도 0.98 이다). 그래서 낱말 단위로 다시 본다 — 그리고 반드시 '탑재되는 형식'으로 본다:
+# 원본(128kbps)에서 맞게 받아써지던 낱말이 인코딩본(48kbps)에서는 달리 받아써질 수 있다(실제로 있었다).
+OFFS = (0, 10, 25, 50)                      # 시작 위치를 이만큼(ms) 밀어 가며 받아쓴다 — 경계선 발음은 여기서 뒤집힌다
+SOUNDS = {'헤헤', '하', '타', '아', '어', '음'}   # 웃음·한숨·말 더듬 — 빠지거나 끼어도 낱말 차이로 치지 않는다
+
+
+def lexical_diffs(e, heard):
+    """받아쓴 문장이 낭독문과 '낱말이' 다른 곳 [(기대, 들림)]. 띄어쓰기·문장부호는 무시한다.
+    숫자·영문 표기(60도, CO, 15cm)는 화면 표기에 있는 것이면 정상, 없으면 차이로 친다."""
+    exp, got = norm(e['tts']), norm(heard)
+    shown = {x.lower() for x in re.findall(r'[0-9]+(?:\.[0-9]+)?|[A-Za-z]+', plain(e['text']))}
+    out = []
+    for x in re.findall(r'[0-9]+(?:\.[0-9]+)?|[A-Za-z]+', heard):
+        if x.lower() not in shown: out.append(('(화면에 없는 숫자·영문)', x))
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, exp, got, autojunk=False).get_opcodes():
+        x, y = exp[i1:i2], got[j1:j2]
+        if op == 'equal' or re.search(r'[0-9A-Za-z]', y): continue          # 숫자·영문 표기 구간은 위에서 따로 봤다
+        if (not y and x in SOUNDS) or (not x and y in SOUNDS): continue
+        out.append((exp[max(0, i1 - 2):i2 + 2], got[max(0, j1 - 2):j2 + 2]))   # 앞뒤 두 글자씩 문맥을 붙인다
+    return out
+
+
+def hear(src, tmp, offs=OFFS):
+    """파일을 시작 위치만 밀어 가며 받아쓴다 → {ms: 받아쓴 문장}"""
+    out = {}
+    for ms in offs:
+        f = Path(tmp) / f'{Path(src).stem}_{ms}_{uuid.uuid4().hex[:6]}.flac'
+        run(['ffmpeg', '-v', 'error', '-y', '-i', str(src), '-af', f'adelay={ms}:all=1' if ms else 'anull',
+             '-ac', '1', '-ar', '44100', '-c:a', 'flac', str(f)])
+        out[ms] = stt(f); f.unlink()
+    return out
+
+
 def cmd_fetch(a):
     need_ffmpeg()
+    import tempfile
     cast = load(CAST)
     if not cast: die(f'{CAST.relative_to(ROOT)} 가 없다')
     takes = load(TAKES) or {}
+    sc_all = script()
     MASTERS.mkdir(parents=True, exist_ok=True)
-    todo = [e for e in script()
+    todo = [e for e in sc_all
             if (a.all or e.get('ship')) and (not a.who or e['who'] in a.who) and (not a.key or e['key'] in a.key)
             and (a.force or not (MASTERS / f"{e['key']}.mp3").is_file())]
     print(f'합성할 대사 {len(todo)}줄 · 낭독문 {sum(len(e["tts"]) for e in todo)}자')
@@ -388,70 +452,79 @@ def cmd_fetch(a):
         for e in todo: print(f"  {e['key']} {e['who']:5} {e['tts']}")
         return 0
     spent = 0
-    for n, e in enumerate(todo, 1):
-        v = cast['voices'].get(e['who'])
-        if not v: die(f"cast.json 에 화자가 없다: {e['who']}")
-        prev = takes.get(e['key'], {})
-        base = (prev.get('take', -1) + 1) if a.force else 0
-        best = None
-        for t in range(base, base + a.takes):
-            seed = (int(e['key'], 16) + t * 7919) & 0xffffffff
-            data, cost = tts(e['tts'], v, cast, seed); spent += cost or 0
-            tmp = MASTERS / f".{e['key']}.take{t}.mp3"; tmp.write_bytes(data)
-            d = duration(tmp)
-            heard = '' if a.no_verify else stt(tmp)
-            sc_ = 1.0 if a.no_verify else score(heard, e)
-            cand = {'take': t, 'seed': seed, 'dur': round(d, 2), 'heard': heard, 'score': round(sc_, 3), 'tmp': tmp}
-            if best is None or cand['score'] > best['score']:
-                if best: best['tmp'].unlink()
-                best = cand
-            else: tmp.unlink()
-            if d > 0.6 and sc_ >= a.accept: break
-        best.pop('tmp').replace(MASTERS / f"{e['key']}.mp3")
-        takes[e['key']] = {'who': e['who'], 'voice_id': v['voice_id'], 'model': cast['model'], 'params': params(v, cast), 'tts': e['tts'],
-                           'sha256': sha(MASTERS / f"{e['key']}.mp3"), **best}   # 새 원본 → 옛 인코딩 기록(asset)은 버린다
-        dump(TAKES, dict(sorted(takes.items())))
-        flag = '' if best['score'] >= a.accept else '   ← 확인 필요'
-        print(f"[{n}/{len(todo)}] {e['key']} {e['who']:5} take {best['take']} {best['dur']:5.2f}s 일치 {best['score']:.2f}{flag}")
-        if flag: print(f"      낭독문  {e['tts']}\n      받아씀  {best['heard']}")
+    tmpd = Path(tempfile.mkdtemp(prefix='bib-fetch-'))
+    try:
+        for n, e in enumerate(todo, 1):
+            v = cast['voices'].get(e['who'])
+            if not v: die(f"cast.json 에 화자가 없다: {e['who']}")
+            prev = takes.get(e['key'], {})
+            base = (prev.get('take', -1) + 1) if a.force else 0
+            best = None
+            for t in range(base, base + a.takes):
+                seed = (int(e['key'], 16) + t * 7919) & 0xffffffff
+                data, cost = tts(e['tts'], v, cast, seed); spent += cost or 0
+                tmp = MASTERS / f".{e['key']}.take{t}.mp3"; tmp.write_bytes(data)
+                d = duration(tmp)
+                if a.no_verify:
+                    heard, sc_, bad = '', 1.0, []
+                else:
+                    # 원본이 아니라 '탑재될 형식'으로 인코딩해, 시작 위치를 밀어 가며 받아쓴다.
+                    enc = tmpd / f"{e['key']}.take{t}.mp3"
+                    encode_one(tmp, enc, speaker_gain(e['who'], [x for x in sc_all if x['key'] != e['key']], extra=[tmp])[0])
+                    hs = hear(enc, tmpd)
+                    heard, sc_ = hs[0], min(score(h, e) for h in hs.values())
+                    bad = sorted({f'{x}→{y}' for h in hs.values() for x, y in lexical_diffs(e, h)})
+                cand = {'take': t, 'seed': seed, 'dur': round(d, 2), 'heard': heard, 'score': round(sc_, 3),
+                        'diffs': bad, 'tmp': tmp}
+                rank = lambda c: (-len(c['diffs']), c['score'])     # 낱말 차이가 적은 것, 그다음 일치도
+                if best is None or rank(cand) > rank(best):
+                    if best: best['tmp'].unlink()
+                    best = cand
+                else: tmp.unlink()
+                if d > 0.6 and sc_ >= a.accept and not bad: break
+            best.pop('tmp').replace(MASTERS / f"{e['key']}.mp3")
+            takes[e['key']] = {'who': e['who'], 'voice_id': v['voice_id'], 'model': cast['model'], 'params': params(v, cast),
+                               'tts': e['tts'], 'sha256': sha(MASTERS / f"{e['key']}.mp3"), **best}   # 옛 인코딩 기록(asset)은 버린다
+            dump(TAKES, dict(sorted(takes.items())))
+            flag = '' if best['score'] >= a.accept and not best['diffs'] else '   ← 확인 필요'
+            print(f"[{n}/{len(todo)}] {e['key']} {e['who']:5} take {best['take']} {best['dur']:5.2f}s 일치 {best['score']:.2f}{flag}")
+            if flag: print(f"      낭독문  {e['tts']}\n      받아씀  {best['heard']}\n      낱말 차이  {best['diffs']}")
+    finally:
+        shutil.rmtree(tmpd, ignore_errors=True)
     print(f'완료 — 크레딧 {spent} 사용 (이어서 encode → manifest → check)')
     return 0
 
 
 def cmd_probe(a):
-    """탑재 파일을 시작 위치만 0/10/25ms 밀어 가며 받아쓴다. 소리는 같은데 받아쓴 낱말이 뒤집히면 그 낱말의
-    발음이 경계선에 있다는 신호다(예: '범인은'↔'범위는') — 띄어쓰기·숫자 표기 차이는 무시해도 된다.
-    뒤집히는 줄은 fetch --force 로 다시 뽑아 probe 가 조용해지는 테이크를 고른다."""
+    """탑재 파일(assets/voice)을 시작 위치만 0·10·25·50ms 밀어 가며 받아써, 낭독문과 '낱말이' 다르게 받아써진
+    곳을 보여 주고 takes.json 의 probe 에 적는다. 받아쓰기는 귀가 아니다 — 같은 소리를 다른 철자로 적기도 한다
+    (설래원/설레원, 삼발이/삼바리). 여기 나온 줄은 '들어 볼 줄'의 목록이지 오류의 목록이 아니다.
+    정말 달리 들리는 줄은 fetch --force --key <키> 로 다시 뽑는다(fetch 도 같은 방식으로 테이크를 고른다)."""
     need_ffmpeg()
     import tempfile
     from concurrent.futures import ThreadPoolExecutor
+    sc = {e['key']: e for e in script()}
     keys = a.key or sorted(p.stem for p in OUT.glob('*.mp3'))
-    offs = (0, 10, 25)
-    tmp = Path(tempfile.mkdtemp(prefix='bib-probe-'))
-
-    def one(job):
-        k, ms = job
-        src = OUT / f'{k}.mp3'
-        if not src.is_file(): src = MASTERS / f'{k}.mp3'
-        f = tmp / f'{k}_{ms}.flac'
-        run(['ffmpeg', '-v', 'error', '-y', '-i', str(src), '-af', f'adelay={ms}:all=1' if ms else 'anull',
-             '-ac', '1', '-ar', '44100', '-c:a', 'flac', str(f)])
-        t = stt(f); f.unlink()
-        return k, ms, [w for w in re.sub(r'[^0-9A-Za-z가-힣 ]', '', t).split()]
-    res = {}
+    miss = [k for k in keys if k not in sc or not (OUT / f'{k}.mp3').is_file()]
+    if miss: die(f'탑재 파일이나 대본이 없는 키: {miss[:5]}')
+    takes = load(TAKES) or {}
+    tmpd = Path(tempfile.mkdtemp(prefix='bib-probe-'))
     try:
         with ThreadPoolExecutor(4) as ex:
-            for k, ms, toks in ex.map(one, [(k, ms) for k in keys for ms in offs]): res.setdefault(k, {})[ms] = toks
+            heard = dict(zip(keys, ex.map(lambda k: hear(OUT / f'{k}.mp3', tmpd), keys)))
     finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+        shutil.rmtree(tmpd, ignore_errors=True)
     n = 0
     for k in keys:
-        base = res[k][0]
-        for ms in offs[1:]:
-            for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, base, res[k][ms]).get_opcodes():
-                if op != 'equal' and ''.join(base[i1:i2]) != ''.join(res[k][ms][j1:j2]):   # 띄어쓰기만 다른 것은 건너뛴다
-                    n += 1; print(f"{k}  +0ms「{' '.join(base[i1:i2])}」 → +{ms}ms「{' '.join(res[k][ms][j1:j2])}」")
-    print(f'{len(keys)}개 파일 · 뒤집힌 곳 {n}군데 (숫자 표기·웃음/한숨 같은 소리 표기는 정상 — 낱말이 바뀐 줄만 다시 뽑는다)')
+        where = {}
+        for ms, h in heard[k].items():
+            for x, y in lexical_diffs(sc[k], h): where.setdefault(f'{x}→{y}', []).append(ms)
+        takes.setdefault(k, {})['probe'] = {'asset': sha(OUT / f'{k}.mp3'), 'diffs': {d: ms for d, ms in sorted(where.items())}}
+        if where:
+            n += 1
+            print(f"{k} {sc[k]['who']}  " + ' · '.join(f"{d} (+{'/'.join(map(str, ms))}ms)" for d, ms in sorted(where.items())))
+    dump(TAKES, dict(sorted(takes.items())))
+    print(f'{len(keys)}개 파일 중 {n}개에서 낭독문과 다르게 받아써진 낱말이 있다 — 들어 보고, 정말 다르면 다시 뽑는다.')
     return 0
 
 
@@ -462,17 +535,17 @@ def main():
     c.add_argument('--allow-unvoiced', action='store_true', help='음성 없는 대사를 실패가 아니라 주의로 다룬다')
     sub.add_parser('encode', help='원본 → assets/voice').set_defaults(fn=cmd_encode)
     sub.add_parser('manifest', help='VOICE_HAVE 갱신').set_defaults(fn=cmd_manifest)
-    sub.add_parser('prune', help='주인 없는 assets/voice 파일 삭제').set_defaults(fn=cmd_prune)
+    sub.add_parser('prune', help='탑재 대상을 지금 대사에 맞춘다(내림·되살림)').set_defaults(fn=cmd_prune)
     f = sub.add_parser('fetch', help='ElevenLabs 로 원본 합성'); f.set_defaults(fn=cmd_fetch)
     f.add_argument('--all', action='store_true', help='ship:false(보험용) 대사까지')
     f.add_argument('--who', nargs='*', help='이 화자만')
     f.add_argument('--key', nargs='*', help='이 키만')
     f.add_argument('--force', action='store_true', help='원본이 있어도 새 테이크로 다시 합성')
-    f.add_argument('--takes', type=int, default=3, help='역검증이 기준에 못 미칠 때 최대 시도 횟수')
+    f.add_argument('--takes', type=int, default=3, help='역검증이 깨끗하지 않을 때(일치도 미달·낱말 차이) 최대 시도 횟수')
     f.add_argument('--accept', type=float, default=0.86, help='역검증 일치도 합격선')
     f.add_argument('--no-verify', action='store_true', help='음성→텍스트 역검증 생략')
     f.add_argument('--dry-run', action='store_true', help='무엇을 합성할지만 보여 준다')
-    pb = sub.add_parser('probe', help='시작 위치를 밀어 받아써 발음이 경계선인 낱말 찾기'); pb.set_defaults(fn=cmd_probe)
+    pb = sub.add_parser('probe', help='탑재 파일을 받아써 낭독문과 다르게 들리는 낱말 찾기'); pb.set_defaults(fn=cmd_probe)
     pb.add_argument('--key', nargs='*', help='이 키만 (기본: 탑재 파일 전부)')
     a = ap.parse_args()
     return a.fn(a)
