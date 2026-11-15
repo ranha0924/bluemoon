@@ -13,7 +13,7 @@ O1 최신성   O2 에셋(이미지 23장·폰트 4면)   O3 전체 플레이(사
 O5 위생(페이지 외 요청 0 · 실패 요청 0 · 콘솔 에러 0)
 O6 로딩 중 이른 클릭(CPU 4배 감속) — 타이틀 버튼이 보이는 순간 이미 동작해야 한다
 O7 '다른 이름으로 저장(웹페이지, 전체)' 사본(현재 DOM 직렬화)도 이미지·음성을 품고 있다
-O8 대사 음성 내장본 — 블록·로더·목록 일치, blob: 재생, 같은 답변 다시 묻기, 전부 디코드
+O8 대사 음성 내장본 — 블록·로더·목록 일치, blob: 재생(대사·답변·단서 설명), 같은 답변 다시 묻기, 전부 디코드
 """
 import os, shutil, subprocess, sys, tempfile
 from pathlib import Path
@@ -204,6 +204,10 @@ def main():
             pg.click('#talkQs .q-btn >> nth=0')   # offURL 은 한 번 쓴 원문을 비운다 — blob URL 을 붙들고 있어야 다시 나온다
             check('같은 답변을 다시 물어도 재생', voiced())
             pg.keyboard.press('Escape')
+            pg.click('#talkBack'); pg.click('#talkMenuBtn'); pg.click('#hubGrid .room-card >> nth=0')
+            pg.click('#spots .spot-btn >> nth=0')
+            check('단서 설명 — 내장본에서 재생', active(pg) == 'scr-dialog' and voiced())
+            adv(pg)
             dec = pg.evaluate("""Promise.all([...VOICE.have].map(k=>new Promise(r=>{
                 const u=VOICE.url[k]||(VOICE.url[k]=offURL('voice',k,'audio/mpeg')); const a=new Audio();
                 a.onloadedmetadata=()=>r(u.startsWith('blob:')&&a.duration>0.6); a.onerror=()=>r(false);

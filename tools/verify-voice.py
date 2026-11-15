@@ -27,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = 'http://localhost:8899/index.html'
-OK, BAD = [], []
+OK, BAD, SKIP = [], [], []
 for _s in (sys.stdout, sys.stderr):   # 한국어 윈도우 cp949 리다이렉트에서 '—' 로 죽지 않게
     try: _s.reconfigure(errors='replace')
     except AttributeError: pass
@@ -45,6 +45,12 @@ def check(name, cond, extra=''):
 
 
 def section(t): print(f'[{t}]')
+
+
+def skip(name, why):
+    # 대사를 고쳐 음성을 포기한 뒤(--allow-unvoiced)에는 '그 줄이 재생된다'를 전제한 검사를 할 수 없다 —
+    # 실패가 아니라 건너뜀으로 적는다(공허한 통과로 세지 않는다).
+    SKIP.append(name); print(f'  --   {name}  (건너뜀 — {why})')
 def active(pg): return pg.evaluate("document.querySelector('.screen.active').id")
 
 
@@ -77,6 +83,27 @@ def silent(pg):
 
 
 HEARD, LAT = set(), []
+# 검사 대상 줄은 페이지에서 고른다 — 특정 대사를 코드에 박아 두면 그 줄을 고쳤을 때 거짓 실패가 난다.
+PICK_ANSWER = """(()=>{ const cs=Object.keys(CASES);     // 처음부터 열려 있고 음성이 있는 심문 답변 하나
+  for(let ci=0;ci<cs.length;ci++){ const P=CASES[cs[ci]].PEOPLE, ps=Object.keys(P);
+    for(let pi=0;pi<ps.length;pi++){ const p=P[ps[pi]];
+      for(let qi=0;qi<p.qs.length;qi++){ const k=VOICE.key(p.name.split(' · ')[0], p.qs[qi].a);
+        if(!p.qs[qi].need && VOICE.have.has(k)) return {ci,pi,qi,key:k}; } } }
+  return null; })()"""
+PICK_TRIPLE = """(()=>{ const cs=Object.keys(CASES);    // 표준 프롤로그에서 음성 있는 줄이 셋 이어지는 곳
+  for(let ci=0;ci<cs.length;ci++){ const L=CASES[cs[ci]].PROLOGUE, K=L.map(l=>VOICE.key(l.name.split(' · ')[0], l.text));
+    for(let i=0;i+2<L.length;i++) if(K.slice(i,i+3).every(k=>VOICE.have.has(k))) return {ci,ck:cs[ci],i,k:K}; }
+  return null; })()"""
+
+
+def next_line(pg):
+    if pg.evaluate('!!G._tw'): pg.keyboard.press('Enter'); pg.wait_for_timeout(30)
+    pg.keyboard.press('Enter'); pg.wait_for_timeout(40)
+
+
+def ask(pg, ans, menu_open=False):
+    if not menu_open: pg.click('#talkMenuBtn')
+    pg.click(f"#hubGrid .room-card >> nth={ans['pi']}"); pg.click(f"#talkQs .q-btn >> nth={ans['qi']}")
 
 
 def dialog(pg, tag, problems, first_enter=True):
@@ -102,9 +129,17 @@ def dialog(pg, tag, problems, first_enter=True):
     problems.append(f'{tag} 대화가 끝나지 않음')
 
 
+def settle(pg):
+    """카드를 마우스로 누른 직후 한두 프레임은 포커스가 (이미 숨은) 카드에 남아 있을 수 있다. 그 순간의
+    Enter 는 게임의 '포커스된 카드 활성화' 경로를 타서 사건을 다시 시작한다(사람 손으로는 불가능한 간격,
+    30회 중 14회 재현) — 키를 보내기 전에 포커스가 카드를 떠나기를 기다린다."""
+    pg.wait_for_function("!document.activeElement.classList.contains('case-card')"
+                         " && !document.activeElement.classList.contains('room-card')", timeout=2000)
+
+
 def start(pg, idx, fast, url=None):
     pg.goto(f'{url or BASE}?fast={int(fast)}'); pg.wait_for_timeout(400)
-    pg.click('#scr-title .btn'); pg.click(f'#caseGrid .case-card >> nth={idx}')
+    pg.click('#scr-title .btn'); pg.click(f'#caseGrid .case-card >> nth={idx}'); settle(pg)
 
 
 def clues(pg, tag, problems):
@@ -247,24 +282,33 @@ def main():
         for how in CLOSERS:
             v = closes.get(how, [])
             check(f'답변 닫기 — {how} ({len(v)}회) 패널 닫힘·음성 정지', bool(v) and all(v))
-        start(pg, 0, False)
-        k0 = pg.evaluate(LINE)['key']; wait_playing(pg, k0)
-        pg.keyboard.press('Enter'); pg.wait_for_timeout(40); pg.keyboard.press('Enter')
-        k1 = pg.evaluate(LINE)['key']
-        check('다음 줄로 넘기면 음성도 다음 줄로 바뀐다', k1 != k0 and wait_playing(pg, k1) is not None, st(pg))
+        tri = pg.evaluate(PICK_TRIPLE); ans = pg.evaluate(PICK_ANSWER)
+        if tri:
+            start(pg, tri['ci'], False)
+            for _ in range(tri['i']): next_line(pg)
+            k0, k1 = tri['k'][tri['i']], tri['k'][tri['i'] + 1]
+            ok0 = wait_playing(pg, k0) is not None
+            next_line(pg)
+            check('다음 줄로 넘기면 음성도 다음 줄로 바뀐다', ok0 and k1 != k0 and wait_playing(pg, k1) is not None, st(pg))
+        else:
+            skip('다음 줄로 넘기면 음성도 다음 줄로 바뀐다', '음성 있는 줄이 이어지는 프롤로그가 없다'); start(pg, 0, False)
         for _ in range(12):
             if active(pg) != 'scr-dialog': break
             pg.keyboard.press('Enter'); pg.wait_for_timeout(40)
         check('대화가 끝나 허브로 — 음성 정지', active(pg) == 'scr-hub' and silent(pg), st(pg))
-        pg.click('#talkMenuBtn'); pg.click('#hubGrid .room-card >> nth=0'); pg.click('#talkQs .q-btn >> nth=0')
-        ka = pg.evaluate("VOICE.key(G.C.PEOPLE.boss.name.split(' · ')[0], G.C.PEOPLE.boss.qs[0].a)")
-        playing = wait_playing(pg, ka) is not None
-        pg.click('#talkBack'); pg.wait_for_timeout(60)
-        check('[인물 선택으로] — 답변 음성 정지', playing and silent(pg) and active(pg) == 'scr-hub', st(pg))
-        pg.click('#hubGrid .room-card >> nth=0'); pg.click('#talkQs .q-btn >> nth=0'); playing = wait_playing(pg, ka) is not None
-        pg.evaluate('G.backToLobby()'); pg.wait_for_timeout(60)   # 심문 화면엔 로비 버튼이 없다 — 관문 함수 직접 호출
-        check('backToLobby — 답변 패널 닫힘·음성 정지', playing and active(pg) == 'scr-lobby' and silent(pg)
-              and pg.evaluate("G.$('talkAnswer').style.display") == 'none', st(pg))
+        if ans:
+            ka = ans['key']
+            start(pg, ans['ci'], False); dialog(pg, 'W3', [])
+            ask(pg, ans); playing = wait_playing(pg, ka) is not None
+            pg.click('#talkBack'); pg.wait_for_timeout(60)
+            check('[인물 선택으로] — 답변 음성 정지', playing and silent(pg) and active(pg) == 'scr-hub', st(pg))
+            ask(pg, ans, menu_open=True); playing = wait_playing(pg, ka) is not None
+            pg.evaluate('G.backToLobby()'); pg.wait_for_timeout(60)   # 심문 화면엔 로비 버튼이 없다 — 관문 함수 직접 호출
+            check('backToLobby — 답변 패널 닫힘·음성 정지', playing and active(pg) == 'scr-lobby' and silent(pg)
+                  and pg.evaluate("G.$('talkAnswer').style.display") == 'none', st(pg))
+        else:
+            for nm in ('[인물 선택으로] — 답변 음성 정지', 'backToLobby — 답변 패널 닫힘·음성 정지'):
+                skip(nm, '처음부터 열려 있는 음성 있는 답변이 없다')
         # 허브의 [로비로] (실제 클릭)
         start(pg, 0, True); dialog(pg, 'W3', [])
         pg.click('#scr-hub .btn.back'); pg.wait_for_timeout(80)
@@ -296,52 +340,64 @@ def main():
         for _ in range(n):
             pg.keyboard.press(str(pg.evaluate('G.DQ[G.deduceIdx].ans') + 1)); pg.wait_for_timeout(1750)
         sim_then_reveal(pg, 'W3', [])
+        end_has = pg.evaluate("VOICE.have.has(VOICE.key('내레이션', G.C.ending.text))")
         told = ending_voice(pg)
         pg.click('#certBtn', no_wait_after=True); pg.wait_for_timeout(300); kept = st(pg)
         pg.click('#scr-end .btn >> nth=1'); pg.wait_for_timeout(80)
-        check('엔딩 글 낭독 중 [수사관 임명장]은 음성을 끊지 않고, [다른 사건 파일]은 끊는다',
-              told and (not pg.evaluate("VOICE.have.size") or not kept['paused']) and active(pg) == 'scr-lobby' and silent(pg),
-              (told, kept, st(pg)))
+        left = active(pg) == 'scr-lobby' and silent(pg)
+        if end_has:
+            check('엔딩 글 낭독 중 [수사관 임명장]은 음성을 끊지 않고, [다른 사건 파일]은 끊는다',
+                  told and not kept['paused'] and left, (told, kept, st(pg)))
+        else:
+            skip('엔딩 글 낭독 중 [수사관 임명장]은 음성을 끊지 않는다', '이 사건의 엔딩 글에 음성이 없다')
+            check('엔딩(음성 없음) → [다른 사건 파일] — 로비·무음', told and left, st(pg))
 
         section('W4 같은 질문 다시 묻기')
-        start(pg, 0, False); dialog(pg, 'W4', [])
-        pg.click('#talkMenuBtn'); pg.click('#hubGrid .room-card >> nth=0')
-        pg.click('#talkQs .q-btn >> nth=0'); first = wait_playing(pg, ka) is not None
-        pg.wait_for_timeout(900); t_far = st(pg)['t']
-        pg.keyboard.press('Escape'); pg.wait_for_timeout(50)
-        pg.click('#talkQs .q-btn >> nth=0'); again = wait_playing(pg, ka) is not None; t_again = st(pg)['t']
-        check('닫았다가 다시 물으면 처음부터 다시 재생', first and again and t_again < t_far, (t_far, t_again))
-        pg.click('#talkQs .q-btn >> nth=0'); pg.wait_for_timeout(250); s = st(pg)
-        check('답변이 떠 있는 채로 다시 눌러도 처음부터 재생', s['cur'] == ka and not s['paused'] and s['t'] < 0.6, s)
+        if ans:
+            start(pg, ans['ci'], False); dialog(pg, 'W4', [])
+            ask(pg, ans); first = wait_playing(pg, ka) is not None
+            pg.wait_for_timeout(900); t_far = st(pg)['t']
+            pg.keyboard.press('Escape'); pg.wait_for_timeout(50)
+            pg.click(f"#talkQs .q-btn >> nth={ans['qi']}"); again = wait_playing(pg, ka) is not None; t_again = st(pg)['t']
+            check('닫았다가 다시 물으면 처음부터 다시 재생', first and again and t_again < t_far, (t_far, t_again))
+            pg.click(f"#talkQs .q-btn >> nth={ans['qi']}"); pg.wait_for_timeout(250); s_ = st(pg)
+            check('답변이 떠 있는 채로 다시 눌러도 처음부터 재생', s_['cur'] == ka and not s_['paused'] and s_['t'] < 0.6, s_)
 
-        section('W5 음소거 연동')
-        m0 = st(pg)['muted']
-        pg.keyboard.press('Escape'); pg.click('#talkBack'); pg.click('#talkMenuBtn')
-        pg.click('#sndBtn'); m_off_idle = st(pg)['muted']
-        pg.click('#talkMenuBtn'); pg.click('#hubGrid .room-card >> nth=0'); pg.click('#talkQs .q-btn >> nth=0')
-        wait_playing(pg, ka); m_off = st(pg)['muted']
-        pg.keyboard.press('Escape'); pg.click('#talkBack'); pg.click('#talkMenuBtn')
-        pg.click('#sndBtn')
-        pg.click('#talkMenuBtn'); pg.click('#hubGrid .room-card >> nth=0'); pg.click('#talkQs .q-btn >> nth=0')
-        wait_playing(pg, ka); m_on = st(pg)['muted']
-        check('사운드 끄면 음성도 muted, 다시 켜면 풀린다', [m0, m_off_idle, m_off, m_on] == [False, True, True, False],
-              [m0, m_off_idle, m_off, m_on])
-        check('음량은 파일에 구워져 있다 — 재생 중 volume 은 1 그대로', st(pg)['vol'] == 1, st(pg))
+            section('W5 음소거 연동')
+            m0 = st(pg)['muted']
+            pg.keyboard.press('Escape'); pg.click('#talkBack'); pg.click('#talkMenuBtn')
+            pg.click('#sndBtn'); m_off_idle = st(pg)['muted']
+            ask(pg, ans); wait_playing(pg, ka); m_off = st(pg)['muted']
+            pg.keyboard.press('Escape'); pg.click('#talkBack'); pg.click('#talkMenuBtn')
+            pg.click('#sndBtn')
+            ask(pg, ans); on_air = wait_playing(pg, ka) is not None; s_ = st(pg); m_on = s_['muted']
+            check('사운드 끄면 음성도 muted, 다시 켜면 풀린다', [m0, m_off_idle, m_off, m_on] == [False, True, True, False],
+                  [m0, m_off_idle, m_off, m_on])
+            check('음량은 파일에 구워져 있다 — 재생 중 volume 은 1 그대로', on_air and not s_['paused'] and s_['vol'] == 1, s_)
+        else:
+            for nm in ('닫았다가 다시 물으면 처음부터 다시 재생', '답변이 떠 있는 채로 다시 눌러도 처음부터 재생',
+                       '사운드 끄면 음성도 muted, 다시 켜면 풀린다', '음량은 파일에 구워져 있다 — 재생 중 volume 은 1 그대로'):
+                skip(nm, '처음부터 열려 있는 음성 있는 답변이 없다')
 
         section('W6 고친 대사')
-        pg.goto(BASE + '?fast=0'); pg.wait_for_timeout(400)
-        pg.evaluate("CASES.case1.PROLOGUE[1].text += ' 부탁드립니다.'")   # 둘째 줄만 고친다
-        pg.click('#scr-title .btn'); pg.click('#caseGrid .case-card >> nth=0')
-        k0 = pg.evaluate(LINE)['key']; ok0 = wait_playing(pg, k0) is not None
-        pg.keyboard.press('Enter'); pg.wait_for_timeout(40)
-        before = len(voice_reqs); e0 = len(errs)
-        pg.keyboard.press('Enter'); pg.wait_for_timeout(500)
-        ln = pg.evaluate(LINE)
-        check('고친 줄은 무음 — 직전 음성도 끊긴다', ok0 and not ln['has'] and silent(pg), (ln, st(pg)))
-        check('고친 줄은 파일 요청도 에러도 없다', len(voice_reqs) == before and len(errs) == e0, voice_reqs[before:])
-        pg.keyboard.press('Enter'); pg.wait_for_timeout(40); pg.keyboard.press('Enter')
-        k2 = pg.evaluate(LINE)['key']
-        check('그다음 줄은 다시 정상 재생', wait_playing(pg, k2) is not None, st(pg))
+        if tri:
+            i = tri['i']
+            pg.goto(BASE + '?fast=0'); pg.wait_for_timeout(400)
+            pg.evaluate(f"CASES.{tri['ck']}.PROLOGUE[{i + 1}].text += ' 부탁드립니다.'")   # 가운데 줄만 고친다
+            pg.click('#scr-title .btn'); pg.click(f"#caseGrid .case-card >> nth={tri['ci']}"); settle(pg)
+            for _ in range(i): next_line(pg)
+            ok0 = wait_playing(pg, tri['k'][i]) is not None
+            if pg.evaluate('!!G._tw'): pg.keyboard.press('Enter'); pg.wait_for_timeout(40)
+            before = len(voice_reqs); e0 = len(errs)
+            pg.keyboard.press('Enter'); pg.wait_for_timeout(500)
+            ln = pg.evaluate(LINE)
+            check('고친 줄은 무음 — 직전 음성도 끊긴다', ok0 and not ln['has'] and silent(pg), (ln, st(pg)))
+            check('고친 줄은 파일 요청도 에러도 없다', len(voice_reqs) == before and len(errs) == e0, voice_reqs[before:])
+            next_line(pg)
+            check('그다음 줄은 다시 정상 재생', wait_playing(pg, tri['k'][i + 2]) is not None, st(pg))
+        else:
+            for nm in ('고친 줄은 무음 — 직전 음성도 끊긴다', '고친 줄은 파일 요청도 에러도 없다', '그다음 줄은 다시 정상 재생'):
+                skip(nm, '음성 있는 줄이 셋 이어지는 프롤로그가 없다')
 
         section('W7 키보드만으로 완주')
         def kb(sel, n=0, key='Enter'):
@@ -352,7 +408,7 @@ def main():
             return False
         heard_kb, prob = len(HEARD), []
         pg.goto(BASE + '?fast=1'); pg.wait_for_timeout(400)
-        kb('#scr-title .btn'); kb('#caseGrid .case-card', 0)
+        kb('#scr-title .btn'); kb('#caseGrid .case-card', 0); settle(pg)
         dialog(pg, 'W7 프롤로그', prob)
         for ri, rk in enumerate(pg.evaluate('Object.keys(G.C.ROOMS)')):
             kb('#hubGrid .room-card', ri)
@@ -379,11 +435,14 @@ def main():
         section('W8 키오스크 무입력 복귀')
         start(pg, 0, True)
         pg.evaluate('G.KIOSK_WARN=1500; G.KIOSK_OUT=3000')
-        k0 = pg.evaluate(LINE)['key']; was = wait_playing(pg, k0) is not None
+        ln = pg.evaluate(LINE); k0 = ln['key']
+        was = (wait_playing(pg, k0) is not None) if ln['has'] else True
         pg.wait_for_timeout(1600); still = st(pg)
         pg.wait_for_timeout(3600)
-        check('음성이 나오는 중에도 무입력이면 처음 화면으로 돌아간다(음성은 입력이 아니다)',
-              was and still['cur'] == k0 and active(pg) == 'scr-title' and pg.evaluate('VOICE.el===null'), (still, active(pg)))
+        check('음성이 나오는 중에도 무입력이면 처음 화면으로 돌아간다(음성은 입력이 아니다)' if ln['has']
+              else '무입력이면 처음 화면으로 돌아간다(첫 줄에 음성 없음)',
+              was and (still['cur'] == k0 or not ln['has']) and active(pg) == 'scr-title' and pg.evaluate('VOICE.el===null'),
+              (still, active(pg)))
 
         section('W9 위생')
         check('콘솔·페이지 에러 0건', not errs, errs[:5])
@@ -394,7 +453,7 @@ def main():
         check(f'요청된 음성 파일 {len(used)}종 — 전부 목록(VOICE_HAVE) 안', used <= have, sorted(used - have)[:5])
         b.close()
 
-    print(f'\n통과 {len(OK)} / 실패 {len(BAD)}')
+    print(f'\n통과 {len(OK)} / 실패 {len(BAD)}' + (f' / 건너뜀 {len(SKIP)}' if SKIP else ''))
     if BAD:
         for x in BAD: print('  FAIL ' + x)
         return 1
