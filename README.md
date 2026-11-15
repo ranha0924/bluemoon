@@ -3,7 +3,8 @@
 한국가스안전공사 **가스안전 AI 게임·영상 공모전** 출품용 작품 —
 실제 가스안전 수칙과 통계(공사 공식 블로그 발췌)를 그대로 추리 게임의 단서·증언·추리 문항으로
 옮긴 교육용 어드벤처다. 조사관 한세인이 두 건의 가스사고 파일을 맡는다.
-모든 일러스트는 **Higgsfield AI**로 제작했고, 게임은 의존성 없는 단일 HTML 파일이다.
+모든 일러스트는 **Higgsfield AI**로, 인물 대사 음성은 **ElevenLabs** TTS 로 제작했고(둘 다 AI 생성),
+게임은 의존성 없는 단일 HTML 파일이다.
 
 | | 사건 | 무대 |
 |---|---|---|
@@ -26,9 +27,9 @@
 
 ### 오프라인 단일 파일판
 
-**`dist/before-it-blows-offline.html`** 파일 하나에 이미지 23장·폰트 4벌·배경음악 2곡이 모두
-들어 있다(약 12.7MB). `assets/` 폴더도 인터넷도 없이, 이 파일만 USB·메일·메신저로 옮겨
-더블클릭하면 똑같이 실행된다(오프라인 전시·수업용). GitHub 에서 받을 때는 파일 화면의
+**`dist/before-it-blows-offline.html`** 파일 하나에 이미지 23장·폰트 4벌·배경음악 2곡·대사 음성
+62줄이 모두 들어 있다(약 17.3MB). `assets/` 폴더도 인터넷도 없이, 이 파일만 USB·메신저로 옮겨
+더블클릭하면 똑같이 실행된다(오프라인 전시·수업용 — 메일 첨부는 용량 제한에 걸릴 수 있다). GitHub 에서 받을 때는 파일 화면의
 **Download raw file** 버튼을 쓴다 — Raw 를 누르면 브라우저가 텍스트로 보여 준다.
 PC 브라우저(Chrome·Edge·Whale 등) 기준이며, 휴대폰은 로컬 HTML 파일 열기가 기기마다
 제각각이라 권하지 않는다.
@@ -42,7 +43,7 @@ python3 tools/build-offline.py --check    # 커밋된 파일이 최신인지 확
 python3 tools/verify-offline.py           # 빈 폴더 + 오프라인 file:// 로 전체 플레이 검증
 ```
 
-폰트는 CSS 안의 `data:` URI 로, 이미지·음악은 실행되지 않는 base64 블록으로 실리고,
+폰트는 CSS 안의 `data:` URI 로, 이미지·음악·대사 음성은 실행되지 않는 base64 블록으로 실리고,
 `index.html`의 `offURL()`이 이를 `blob:` URL 로 바꿔 쓴다. 이 판에서는 CDN 폴백을 끄므로
 외부 요청이 0건이다. 폰트 라이선스(SIL OFL 1.1) 원문은 파일 머리 주석에 그대로 들어 있다.
 
@@ -53,11 +54,16 @@ python3 tools/verify-offline.py           # 빈 폴더 + 오프라인 file:// �
 | `index.html` | 게임 전체 — 화면, 엔진, 시나리오 데이터, WebAudio 효과음, 내장 학급 설문(아래 '학급 설문') |
 | `assets/*.webp` | 배경 13장 + 인물 10장 = 총 23장 |
 | `assets/fonts/` | 서브셋 웹폰트 4벌(woff2, 총 ~0.4MB) + SIL OFL 1.1 라이선스 원문 |
+| `assets/bgm/*.mp3` | 사건별 배경음악 2곡 (Suno AI 생성) |
+| `assets/voice/*.mp3` | 인물 대사 음성 62줄(48kbps 모노, 총 ~3.5MB) — 아래 '대사 음성' |
+| `tools/build-voice.py` | 대사 음성 합성(`fetch`)·인코딩(`encode`)·목록 갱신(`manifest`)·정합성 검사(`check`) |
+| `tools/voice/` | 음성 대본(`script.json`)·배역(`cast.json`)·합성 기록(`takes.json`)·원본(`masters/`) |
+| `tools/verify-voice.py` | 대사 음성 자동 검증(재생·정지 경로·음소거·키보드 완주 등 W1~W9) |
 | `tools/build-fonts.sh` | 시나리오 텍스트 변경 시 서브셋 재생성 스크립트 |
 | `tools/verify-survey.py` | 내장 학급 설문 자동 검증(진입·딥링크·채점·무유출·키 격리·폰트 커버리지 등 V1~V12) |
 | `dist/before-it-blows-offline.html` | 오프라인 단일 파일판(생성 파일 — 위 '오프라인 단일 파일판') |
 | `tools/build-offline.py` | 단일 파일판 생성·최신성 확인(`--check`) |
-| `tools/verify-offline.py` | 단일 파일판 자동 검증(빈 폴더·오프라인 file:// 에서 에셋·전체 플레이·외부 요청 0) |
+| `tools/verify-offline.py` | 단일 파일판 자동 검증(빈 폴더·오프라인 file:// 에서 에셋·전체 플레이·내장 음성·외부 요청 0) |
 | `video/before-it-blows_1min_v6.mp4` | 공모전 제출용 1분 실행 영상(57초 · 1080p · 자체 합성 음향) |
 | `submission/application_form.pdf` | 참가 신청서(A4 3쪽 — 양식·출품작 이미지·상세 설명) |
 | `submission/class_survey.pdf` | 같은 설문의 인쇄용(A4 3쪽 — 사전·사후·교사용) |
@@ -96,6 +102,7 @@ const CASES = { case1:CASE1, case2:CASE2, case3:CASE3 };
 ```
 
 이미지를 쓰려면 `CDN` 객체에 같은 key를 추가하면 된다 (`IMG`는 `CDN`에서 자동 생성).
+새 사건의 대사는 음성 파일이 없으므로 무음으로 나온다 — 엔진 수정은 필요 없다(아래 '대사 음성').
 단서 수(`/8`), 증언 수(`/3`), 추리 문항 수는 데이터에서 세므로 사건마다 달라도 된다.
 `ending.recap`은 최대 5줄 — 없으면 엔딩 요약 카드가 통째로 숨는다.
 빠른 조사 모드 필드는 전부 선택 사항이다 — `fastPrologue`/`fastReveal`(3줄 컷씬),
@@ -140,12 +147,61 @@ const CASES = { case1:CASE1, case2:CASE2, case3:CASE3 };
 여백을 잘라낸 덕에 `object-fit:contain` 기준으로 인물이 화면을 꽉 채우고,
 `object-position:bottom`으로 대화 상자 위에 정확히 붙는다.
 
+- **대사 음성 62줄** — ElevenLabs 원본(mp3 128kbps 모노)을 화자 단위로 음량을 맞춰
+  (모노 측정 약 −21 LUFS, 피크 −1.5 dBTP 이하) 앞뒤 무음을 다듬고 48kbps 모노 mp3 로 인코딩.
+  줄마다 정규화하지 않는다 — 속삭임과 외침이 같은 크기가 되어 연기가 눌리기 때문이다.
+
 - **폰트 4벌** — 나눔명조 700/800(제목), Noto Sans KR 400/700(본문). Google Fonts 배포본을
   `index.html`의 전체 문자 + ASCII 로 서브셋해 woff2 로 동봉했다(834자 기준 총 ~0.4MB).
   덕분에 **인터넷 없이도(오프라인 전시·수업) 동일하게 렌더**되고 외부 요청이 0건이다.
   라이선스는 SIL OFL 1.1 — 원문을 `assets/fonts/OFL-*.txt`로 함께 둔다
   (오프라인 단일 파일판에는 같은 원문이 파일 머리 주석으로 들어간다).
   시나리오에 새 글자를 추가하면 `tools/build-fonts.sh`로 다시 잘라야 한다.
+
+## 대사 음성
+
+말하는 사람이 있는 대사 — 프롤로그·진상 공개·추리 도입·재정비·심문 답변, 빠른 조사 모드의
+대사까지 62줄 — 에 음성이 붙어 있다. 대사가 뜨면 재생되고, 다음 줄로 넘기거나 화면이 바뀌거나
+답변 패널을 닫으면 멈춘다. 허브의 사운드 버튼으로 효과음·배경음악과 함께 꺼진다.
+단서 설명문과 탐정의 질문(선택지)은 싣지 않았다 — 원본만 `tools/voice/masters/`에 합성해 두었다.
+
+- **실행 중에는 아무것도 합성하지 않는다.** ElevenLabs TTS(`eleven_v4`)로 한 번 합성해
+  `assets/voice/<키>.mp3`로 커밋한 파일을 틀 뿐이다 — API 호출도 외부 요청도 없다.
+- **키는 내용 주소다.** `화자|대사 본문`의 FNV-1a 32bit 해시(16진 8자리)가 파일 이름이다.
+  대사를 한 글자라도 고치면 키가 달라져 **그 줄만 무음**이 된다 — 고친 문장에 옛 음성이 나오는
+  일도, 없는 파일을 요청하는 일도 없다(형광펜 `[[ ]]` 마커는 키에 들어가지 않는다).
+- **다시 합성하려면 API 키가 필요하다.** 그래서 원본(`tools/voice/masters/`)과 낭독 대본을
+  함께 둔다 — 음량·비트레이트·앞뒤 여백은 키 없이도 `encode`로 다시 맞출 수 있다.
+
+```bash
+python3 tools/build-voice.py check       # 대사 ↔ 목록(VOICE_HAVE) ↔ 파일 ↔ 대본 ↔ 원본 정합성
+python3 tools/build-voice.py encode      # 원본 → assets/voice (화자별 음량 통일, 48kbps 모노)
+python3 tools/build-voice.py manifest    # index.html 의 VOICE_HAVE 한 줄 갱신
+python3 tools/verify-voice.py            # 게임 안에서 실제 입력으로 재생·정지 검증 (서버 8899 필요)
+ELEVENLABS_API_KEY=… python3 tools/build-voice.py fetch   # 새로 합성 (키는 환경 변수로만)
+```
+
+낭독 대본(`tools/voice/script.json`의 `tts`)은 화면 표기와 다르다 — 숫자와 단위를 한글로
+풀고(`60℃`→육십 도, `2~3시간`→두세 시간, `6.75배`→육 점 칠오 배), 지문 `(고개를 떨군다)`는
+읽지 않고 연기 태그(`[sighs]`)로 바꿨다. 합성 뒤 모든 줄을 음성→텍스트로 되받아써 대조했다
+(`takes.json`의 `heard`·`score`).
+
+| 화자 | 목소리 (ElevenLabs Voice Library) |
+|---|---|
+| 내레이션 | Kang — 깊고 차분한 남성 이야기꾼 |
+| 한세인 (탐정) | Jian.K — 허스키한 여성 중저음 |
+| 나원래 · 사장 | Namchun — 온화한 노년 남성 |
+| 한여름 · 알바 | Bee — 밝고 자연스러운 젊은 여성 |
+| 구백동 · 캠퍼 | Bongpal — 쾌활한 중노년 남성 |
+| 김초롱 · 초등학생 | Sena — 밝고 또렷한 고음 |
+| 방한욱 · 펜션 사장 | Cha Woo — 차분한 중년 남성 |
+| 온수철 · 관리인 | Jang Ho — 허스키하고 과묵한 노년 남성 |
+| 유설아 · 등산객 | Anna Kim — 여리고 차분한 젊은 여성 |
+| 김파랑 · 펜션 손님 | Aria — 밝고 어린 톤 |
+| 정확한 · 조사관 | Hyunbin — 또렷하고 절제된 중년 남성 |
+
+두 아이는 애니메이션 더빙처럼 성인 여성 성우의 목소리다(아동 목소리를 새로 만들어 달라는
+요청은 ElevenLabs 가 안전 정책으로 거절한다).
 
 ## 조작
 

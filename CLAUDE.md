@@ -52,17 +52,28 @@
   `index.html`이나 `assets/`를 고쳤으면 커밋 전에 `python3 tools/build-offline.py`로 다시 만들고
   `--check`로 최신인지 확인한다. `index.html`에 `<script>`를 하나 더 두거나, `<body>` 태그를 바꾸거나(속성 추가 포함),
   `BIB_OFFLINE` 연결부를 지우면 빌드가 실패한다(삽입 위치·연결부를 특정할 수 없기 때문 — 의도된 가드).
-- 효과음은 WebAudio로 직접 합성한다. 사운드 파일을 추가하지 않는다.
+- 효과음은 WebAudio로 직접 합성한다. 효과음용 사운드 파일을 추가하지 않는다
+  (사운드 파일은 배경음악 `assets/bgm/`과 대사 음성 `assets/voice/` 둘뿐이다).
+- **대사 음성은 '내용 주소'다.** `assets/voice/<키>.mp3`의 키는 `화자|대사 본문`의 해시라서,
+  말하는 사람이 있는 대사(프롤로그·진상·추리 도입·재정비·심문 답변)를 **한 글자라도 고치면
+  그 줄은 무음이 된다**(형광펜 `[[ ]]`만 바꾸는 것은 괜찮다). 재합성에는 ElevenLabs API 키가
+  필요하므로, 대사를 고칠 때는 그 줄의 음성을 잃는다는 것을 사용자에게 먼저 알린다.
+  `index.html`의 `VOICE_HAVE` 한 줄은 손으로 고치지 않는다 — `python3 tools/build-voice.py manifest`가 쓴다.
+  음성의 정지 지점은 `G.show()` 하나(+ `G.closeAnswer()`)다 — 화면을 바꾸는 새 경로를 만들 때
+  `show()`를 우회하면 음성이 남는다. 심문 답변의 `VOICE.say`는 `openTalk()` **뒤**에 있어야 한다.
+  API 키는 환경 변수(`ELEVENLABS_API_KEY`)로만 넘기고 파일·로그·커밋에 남기지 않는다.
 - **학급 설문(`#survey`)은 `#fit` 바깥의 전면 고정 오버레이다** (rotateHint 계열,
   네이티브 크기·자체 스크롤). `#game` 안으로 넣으면 배율에 갇혀 폰에서 입력이 불가해진다.
   열려 있는 동안 `#fit`은 `inert`, 게임 키 입력은 차단(Esc만 닫기)이 불변식이다.
 
 ## 검증 방법
 
-이 환경에는 Chromium이 미리 깔려 있다. `playwright install`을 실행하지 말고 아래 경로를 쓴다.
+이 환경에는 Chromium이 미리 깔려 있다. `playwright install`을 실행하지 말고 깔린 것을 쓴다.
+검증 스크립트는 아래 순서로 있는 것을 고른다(다른 경로면 `BIB_CHROME=<경로>`로 지정).
 
 ```
 /opt/pw-browsers/chromium-1194/chrome-linux/chrome
+/opt/pw-browsers/chromium          # 버전 무관 심볼릭 링크 (1194 가 없는 환경)
 ```
 
 `playwright`, `Pillow`는 세션마다 `pip install`이 필요할 수 있다.
@@ -102,10 +113,18 @@ UI를 수정했다면 최소한 아래를 확인한다.
    '단서 발견' 토스트는 단서 대화가 끝나 **방으로 돌아온 시점**에 뜬다 — 대화 화면에서
    띄우면 상단에 붙은 스포트라이트 링(c4 등)을 가리기 때문. 대화 중에 뜨면 회귀다.
 
-5. **오프라인 단일 파일판** — `index.html`·에셋을 고쳤다면 다시 빌드한 뒤
-   `python3 tools/verify-offline.py`(O1~O7)를 돌린다. 이 파일만큼은 서버가 아니라
+5. **오프라인 단일 파일판** — `index.html`·에셋(음성 포함)을 고쳤다면 다시 빌드한 뒤
+   `python3 tools/verify-offline.py`(O1~O8)를 돌린다. 이 파일만큼은 서버가 아니라
    **빈 폴더 + 오프라인 `file://`**이 실제 사용 환경이라 스크립트가 그렇게 연다
    (위 '로컬 서버로 띄워서 검사' 규칙의 예외).
+
+6. **대사 음성** — 대사 텍스트·대화 엔진·심문 화면·사운드 토글을 건드렸다면
+   `python3 tools/build-voice.py check`와 `python3 tools/verify-voice.py`(W1~W9, 서버 8899)를 돌린다.
+   `check`는 음성이 사라진 줄을 실패로 알린다 — 감수하기로 했다면 `prune` → `manifest` →
+   `check --allow-unvoiced`. 음성 검증은 **자동재생 허용 플래그 없이** 실제 클릭·키 입력으로만
+   재생을 시작시킨다(플래그를 주면 제스처 요건을 검증하지 못한다). 줄을 빨리 넘길 때 나는
+   `assets/voice/` 요청의 `net::ERR_ABORTED`는 받던 다운로드가 중단된 것이라 정상이다 —
+   4xx 응답이나 콘솔 에러가 나면 회귀다(`VOICE_HAVE`에 없는 파일은 요청 자체를 하지 않는다).
 
 `.screen`은 `display:none`으로 숨기기만 하고 DOM에서 제거하지 않는다. 그래서 **모든 화면의
 버튼이 항상 동시에 존재한다.** `class="btn"`은 10개 컨테이너(`scr-title` / `scr-lobby`×3 /
