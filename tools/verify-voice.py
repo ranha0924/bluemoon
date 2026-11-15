@@ -43,7 +43,8 @@ W10 위생(에러·4xx·외부 요청)
 줄어든다 — 검사 이름의 '(N회)'는 음성이 실제로 나던 경우만 센 횟수다. 전부 통과가 '음성 동작 전부 확인'은
 아니다: 스피커로 소리가 나는지는 볼 수 없고(요소의 상태만 본다), 재생 도중의 동작은 W9 의 다섯 줄로만 본다.
 python3 -m http.server 는 Range 요청을 받지 않아 음성 파일의 탐색(seek)이 되지 않는다 — 탐색으로 앞부분을
-건너뛰는 종류의 결함은 이 서버에서는 드러나지 않는다(Range 를 받는 서버에서는 W9 의 '처음부터' 검사가 본다).
+건너뛰는 종류의 결함은 이 서버에서는 드러나지 않는다(Range 를 받는 서버에서는 W9 의 '재생 위치가 입력 뒤 흐른
+시간을 0.25초 넘게 앞서지 않음' 기준이 본다).
 """
 import json, os, subprocess, sys, time, urllib.request
 from pathlib import Path
@@ -176,7 +177,7 @@ def listen(pg, key, alive):
     except Exception as e:
         try: pg.wait_for_load_state('load', timeout=5000)
         except Exception: pass
-        return [f'듣는 동안 페이지가 다시 로드되거나 사라졌다 — {type(e).__name__}: {str(e).splitlines()[0][:90]}'], 0
+        return [f'듣는 동안 예외로 끊겼다(페이지가 다시 로드됐거나 검사 쪽 호출이 실패했다) — {type(e).__name__}: {(str(e).splitlines() or [chr(32)])[0][:90]}'], 0
 
 
 def _listen(pg, key, alive):
@@ -705,7 +706,7 @@ def main():
 
         section('W9 끝까지 듣기')
         try:
-            TAIL = '한 번만·끝까지·재생 위치가 입력 뒤 흐른 시간을 앞서지 않음·음소거/음량/속도 그대로·끝난 뒤에도 화면 그대로'
+            TAIL = '한 번만·끝까지·재생 위치가 입력 뒤 흐른 시간을 0.25초 넘게 앞서지 않음·음소거/음량/속도 그대로·끝난 뒤에도 화면 그대로'
             ON_LINE = "JSON.stringify([document.querySelector('.screen.active').id, G.dlgIdx])"
             def heard(name, res, why_skip):
                 if res is None: skip(f'아무 입력 없이 끝까지 듣기 — {name}: {TAIL}', why_skip)
@@ -737,7 +738,7 @@ def main():
             no_first = '프롤로그 첫 줄에 음성이 있는 사건이 없다'
             heard('대화의 첫 줄', r1, no_first)
             heard('대화의 그다음 줄', r2, no_first if not f['key'] else '음성 있는 첫 줄 바로 뒤에 음성 있는 줄이 없다')
-            heard('단서 설명 한 줄', r3, '이 사건에 첫 줄부터 음성이 있는 단서가 없다')
+            heard('단서 설명 한 줄', r3, '이 사건·이 모드에서 첫 줄부터 음성이 있는 단서를 찾지 못했다(다른 모드의 단서 설명에는 음성이 있을 수 있다)')
             # ④ 심문 답변 — 빠른 조사 링크에서 듣는다(무입력 시계도 함께 본다)
             answers = sorted(pg.evaluate(PICK_ANSWERS), key=lambda x: -DUR.get(x['key'], 0))
             r4 = None
@@ -759,7 +760,7 @@ def main():
             heard('엔딩 글', r5, '엔딩 글에 음성이 있는 사건이 없다')
         except Exception as e:
             # 듣던 줄 밖에서(다음 단계로 가던 중에) 페이지가 사라진 경우 — 남은 듣기는 하지 못했다
-            check('W9 를 끝까지 돌렸다(도중에 페이지가 다시 로드되거나 사라지지 않았다)', False, f'{type(e).__name__}: {str(e).splitlines()[0][:120]}')
+            check('W9 를 끝까지 돌렸다(도중에 예외가 나지 않았다 — 페이지가 다시 로드되면 난다)', False, f'{type(e).__name__}: {(str(e).splitlines() or [chr(32)])[0][:120]}')
 
         section('W10 위생')
         check('콘솔·페이지 에러 0건', not errs, errs[:5])
