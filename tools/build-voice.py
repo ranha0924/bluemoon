@@ -403,7 +403,7 @@ def score(heard, e):
 
 
 # 받아쓰기는 소리를 글자로 '옮겨 적은 것'이라 일치도(score)만으로는 낱말 하나가 바뀐 것을 못 잡는다
-# ('범인은'→'범위는'도 0.98 이다). 그래서 낱말 단위로 다시 본다 — 그리고 반드시 '탑재되는 형식'으로 본다:
+# ('범인은'→'범위는'도 0.96 이다). 그래서 낱말 단위로 다시 본다 — 그리고 반드시 '탑재되는 형식'으로 본다:
 # 원본(128kbps)에서 맞게 받아써지던 낱말이 인코딩본(48kbps)에서는 달리 받아써질 수 있다(실제로 있었다).
 OFFS = (0, 10, 25, 50)                      # 시작 위치를 이만큼(ms) 밀어 가며 받아쓴다 — 경계선 발음은 여기서 뒤집힌다
 SOUNDS = {'헤헤', '하', '타', '아', '어', '음'}   # 웃음·한숨·말 더듬 — 빠지거나 끼어도 낱말 차이로 치지 않는다
@@ -413,10 +413,12 @@ def lexical_diffs(e, heard):
     """받아쓴 문장이 낭독문과 '낱말이' 다른 곳 [(기대, 들림)]. 띄어쓰기·문장부호는 무시한다.
     숫자·영문 표기(60도, CO, 15cm)는 화면 표기에 있는 것이면 정상, 없으면 차이로 친다."""
     exp, got = norm(e['tts']), norm(heard)
-    shown = {x.lower() for x in re.findall(r'[0-9]+(?:\.[0-9]+)?|[A-Za-z]+', plain(e['text']))}
-    out = []
-    for x in re.findall(r'[0-9]+(?:\.[0-9]+)?|[A-Za-z]+', heard):
-        if x.lower() not in shown: out.append(('(화면에 없는 숫자·영문)', x))
+    num = r'[0-9]+(?:\.[0-9]+)?|[A-Za-z]+'
+    shown = [x.lower() for x in re.findall(num, plain(e['text']))]
+    out, at = [], 0
+    for x in re.findall(num, heard):       # 화면 표기에 '그 순서로' 있어야 한다 — 1년/5년이 뒤바뀐 것도 잡는다
+        if x.lower() in shown[at:]: at = shown.index(x.lower(), at) + 1
+        else: out.append(('(화면 표기와 다른 숫자·영문)', x))
     for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, exp, got, autojunk=False).get_opcodes():
         x, y = exp[i1:i2], got[j1:j2]
         if op == 'equal' or re.search(r'[0-9A-Za-z]', y): continue          # 숫자·영문 표기 구간은 위에서 따로 봤다
