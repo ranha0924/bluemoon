@@ -18,9 +18,10 @@
 W0 정합성(build-voice.py check)   W1 자가검증(무제스처 재생 거부)
 W2 전체 플레이 — 사건 2개 × 표준/빠른, 대화 화면의 모든 줄·심문 답변·엔딩 글이 제 파일로
 재생되고 탑재된 음성 전부(VOICE.have)를 한 번 이상 들었는지. 줄마다 시작 순간의 음소거·음량·속도가
-기본값인지, 재생이 확인되기까지 걸린 시간의 묶음별(대화·단서·답변) 중앙값이 500ms 안인지, 타자 효과
-도중의 첫 Enter 가 음성을 건드리지 않는지, 음성이 나던 중에 대화를 닫으면 넘어간 화면(허브·방·추리)에서
-끊겨 있는지도 여기서 본다.
+기본값인지, 재생이 확인되기까지 걸린 시간의 묶음별(대화·단서·답변) 중앙값이 500ms 안인지(표본 8개 미만인
+묶음은 판단하지 않는다 · 일부 줄만 늦는 것은 지나친다), 타자 효과 도중의 첫 Enter 가 음성을 건드리지 않는지
+(대화 줄·단서 설명 줄 — Enter 가 도착했을 때 타자 효과가 돌던 줄에서만), 음성이 나던 중에 대화를 닫으면
+넘어간 화면(허브·방·추리)에서 끊겨 있는지도 여기서 본다.
 W3 정지 경로(다음 줄·답변 닫기 4종·인물 선택으로·로비/엔딩 이탈 5종)
    — 검사에 쓸 줄은 페이지에서 고른다(음성 있는 답변, 음성 있는 줄이 둘·셋 이어지는 대화, 엔딩 글에 음성이
    있는 사건, 빠른 조사 첫 줄에 음성이 있는 사건). 그런 줄이 하나도 없어 못 한 검사는 '건너뜀'으로 적고,
@@ -30,12 +31,14 @@ W7 키보드만으로 완주
 W8 키오스크 무입력 복귀 — 음성이 나는 도중에도(짧은 한도), 끝난 뒤에도(음성보다 긴 한도) 돌아가는지,
    그리고 음성이 시작·종료돼도 무입력 시계(G._kioskLast)가 마지막 실제 입력 시각 그대로인지
 W9 끝까지 듣기 — 다섯 줄(대화의 첫 줄·그다음 줄, 단서 설명, 심문 답변, 엔딩 글)을 아무 입력 없이 끝까지
-   둔다. 보는 것: 처음부터 재생된다(재생 위치가 마지막 입력 뒤 흐른 시간보다 0.25초 넘게 앞서지 않는다),
-   끝까지 실시간으로 간다(되감김·끊김·다시 로드 없음), 그동안 음소거·음량·속도가 기본값 그대로다, 끝난 뒤
-   2.5초 동안 화면이 저절로 바뀌거나 다시 재생되지 않는다, (빠른 조사 링크에서는) 무입력 시계가 그대로다. W2~W7 은 줄마다 0.1초쯤 듣고 넘기므로 '재생 도중'은
+   둔다. 보는 것: 앞부분을 건너뛰지 않는다(재생 위치가 마지막 입력 뒤 흐른 시간보다 0.25초 넘게 앞서지
+   않는다 — 늦게 시작한 만큼 건너뛴 것은 구별하지 못한다), 끝까지 실시간으로 간다(되감김·끊김·다시 로드 없음),
+   그동안 음소거·음량·속도가 기본값 그대로다, 끝난 뒤 2.5초 동안 화면이 저절로 바뀌거나 다시 재생되지 않는다,
+   (빠른 조사 링크에서는) 무입력 시계가 그대로다. 듣는 동안 페이지가 다시 로드되면 실패로 적는다. W2~W7 은 줄마다 0.1초쯤 듣고 넘기므로 '재생 도중'은
    여기서만 본다 — 탑재된 줄 가운데 다섯 줄뿐이다. 나머지 줄에서만 벌어지는 일은 보지 못한다.
 W10 위생(에러·4xx·외부 요청)
 종료 코드: 0 전부 통과 · 1 실패 있음 · 2 실행 불가(서버 없음·다른 폴더·playwright 없음) · 3 실패는 없지만 건너뛴 검사 있음.
+검사 도중 예외로 끝나면(traceback) 요약 줄이 없고 종료 코드는 1이다 — 그것도 실패로 읽는다.
 한계: 여기서 보는 것은 헤드리스 크로미움에서의 동작이다. 고친 줄이 많을수록 같은 동작을 확인하는 횟수가
 줄어든다 — 검사 이름의 '(N회)'는 음성이 실제로 나던 경우만 센 횟수다. 전부 통과가 '음성 동작 전부 확인'은
 아니다: 스피커로 소리가 나는지는 볼 수 없고(요소의 상태만 본다), 재생 도중의 동작은 W9 의 다섯 줄로만 본다.
@@ -167,11 +170,22 @@ KIOSK_DRIFT = "typeof G._kioskLast==='number' ? G._kioskLast - window.__lastInpu
 
 
 def listen(pg, key, alive):
+    """_listen 을 부른다. 듣는 동안 페이지가 다시 로드되면 상태를 읽던 호출이 예외를 던진다(실행 컨텍스트가
+    사라진다) — 그것도 '실패'로 돌려준다. 예외로 끝나면 요약도 위생 검사도 찍히지 않기 때문이다."""
+    try: return _listen(pg, key, alive)
+    except Exception as e:
+        try: pg.wait_for_load_state('load', timeout=5000)
+        except Exception: pass
+        return [f'듣는 동안 페이지가 다시 로드되거나 사라졌다 — {type(e).__name__}: {str(e).splitlines()[0][:90]}'], 0
+
+
+def _listen(pg, key, alive):
     """key 의 음성을 아무 입력 없이 끝까지 듣는다. (문제 목록, 음성 길이)를 돌려준다 — 목록이 비면 정상.
     alive 는 그동안 변하면 안 되는 화면 상태를 읽는 JS 식(문자열을 돌려주는)이다.
-    '처음부터'는 페이지 안의 시계로 본다: 이 음성은 마지막 실제 입력(클릭·Enter)이 시작시킨 것이므로, 재생
-    위치가 그 입력 뒤에 흐른 시간보다 앞서 있으면 앞부분을 건너뛴 것이다(여유 0.25초). 그래서 입력이 시작시킨
-    음성에만 쓴다 — 타이머가 여는 음성(진상 공개 첫 줄)은 대상이 아니다."""
+    앞부분 건너뜀은 페이지 안의 시계로 본다: 이 음성은 마지막 실제 입력(클릭·Enter)이 시작시킨 것이므로, 재생
+    위치가 그 입력 뒤에 흐른 시간보다 0.25초 넘게 앞서 있으면 앞부분을 건너뛴 것이다. 그래서 입력이 시작시킨
+    음성에만 쓴다 — 타이머가 여는 음성(진상 공개 첫 줄)은 대상이 아니다. 한계: 늦게 시작한 만큼 건너뛴 경우
+    (1초 늦게, 1초 지점부터)는 이 기준으로는 정상과 구별되지 않는다."""
     if wait_playing(pg, key) is None: return ['재생이 시작되지 않음'], 0
     f0 = pg.evaluate('({t:VOICE.el.currentTime, since:(Date.now()-window.__lastInput)/1000})')
     w0, p0 = time.time(), f0['t']
@@ -316,7 +330,7 @@ def clues(pg, tag, problems):
         pg.click(f'#hubGrid .room-card >> nth={ri}')
         spots = pg.evaluate(f"G.C.ROOMS['{rk}'].spots.map(s=>s.clue?'c':'')")
         for si in [i for i, s in enumerate(spots) if s == 'c']:
-            pg.click(f'#spots .spot-btn >> nth={si}'); dialog(pg, tag + ' 단서', problems, first_enter=False)
+            pg.click(f'#spots .spot-btn >> nth={si}'); dialog(pg, tag + ' 단서', problems)
         pg.click('#roomBack')
 
 
@@ -471,12 +485,14 @@ def main():
                        else f'{nm} 화면으로 끝나는 대화의 마지막 줄에 음성이 없다')
         # 시작 지연은 묶음별 '중앙값'으로 본다 — 한 줄 한 줄의 최댓값은 부하에 따라 1초 가까이 튀어 기준으로 못 쓴다.
         # 재는 구간은 '검사가 그 줄을 보기 시작한 때 → 재생 위치가 움직이는 것을 확인한 때'다(줄이 화면에 뜬 순간부터가 아니다).
-        meds = {g: sorted(v)[len(v) // 2] for g, v in LAT.items() if v}
+        # 표본이 8개보다 적은 묶음은 판단하지 않는다 — 두세 개의 중앙값은 사실상 최댓값이라 부하 한 번에 넘는다.
+        meds = {g: (sorted(v)[len(v) // 2], len(v)) for g, v in LAT.items() if len(v) >= 8}
         if meds:
-            check('검사가 줄을 본 뒤 재생이 확인되기까지 — 묶음별 중앙값 ' + ' · '.join(f'{g} {m:.0f}ms' for g, m in meds.items())
+            check('검사가 줄을 본 뒤 재생이 확인되기까지 — 묶음별 중앙값 ' + ' · '.join(f'{g} {m:.0f}ms({n}회)' for g, (m, n) in meds.items())
                   + f" (모두 500ms 안 · localhost · 한 줄 최대 {max(max(v) for v in LAT.values() if v):.0f}ms)",
-                  all(m < 500 for m in meds.values()), '중앙값이 500ms 를 넘는 묶음이 있다')
-        else: skip('검사가 줄을 본 뒤 재생이 확인되기까지 — 묶음별 중앙값 500ms 안', '재생된 음성이 없다')
+                  all(m < 500 for m, _ in meds.values()), '중앙값이 500ms 를 넘는 묶음이 있다')
+        for g, v in LAT.items():
+            if len(v) < 8: skip(f'검사가 줄을 본 뒤 재생이 확인되기까지 — {g} 묶음의 중앙값 500ms 안', f'표본이 {len(v)}개뿐이다(8개부터 판단한다)')
         if FE: check(f'타자 효과 도중의 첫 Enter 는 글자만 채운다 — 음성은 끊기지도 되감기지도 않는다 ({len(FE)}회)', all(FE), f'{FE.count(False)}회 어김')
         else: skip('타자 효과 도중의 첫 Enter 는 글자만 채운다 — 음성은 끊기지도 되감기지도 않는다',
                    '타자 효과가 도는 동안 Enter 가 도착한 줄이 없었다(느린 환경에서는 그 전에 타자 효과가 끝난다)')
@@ -625,7 +641,7 @@ def main():
         for ri, rk in enumerate(pg.evaluate('Object.keys(G.C.ROOMS)')):
             kb('#hubGrid .room-card', ri)
             for si in pg.evaluate(f"G.C.ROOMS['{rk}'].spots.map((s,i)=>s.clue?i:-1).filter(i=>i>=0)"):
-                kb('#spots .spot-btn', si); dialog(pg, 'W7 단서', prob, first_enter=False)
+                kb('#spots .spot-btn', si); dialog(pg, 'W7 단서', prob)
             kb('#roomBack')
         for _ in range(2):
             for pi, pk in enumerate(pg.evaluate('Object.keys(G.C.PEOPLE)')):
@@ -688,58 +704,62 @@ def main():
             check('무입력이면 처음 화면으로 돌아간다(음성 없는 줄에서)', back, last)
 
         section('W9 끝까지 듣기')
-        TAIL = '한 번만·처음부터 끝까지·음소거/음량/속도 그대로·끝난 뒤에도 화면 그대로'
-        ON_LINE = "JSON.stringify([document.querySelector('.screen.active').id, G.dlgIdx])"
-        def heard(name, res, why_skip):
-            if res is None: skip(f'아무 입력 없이 끝까지 듣기 — {name}: {TAIL}', why_skip)
-            else: check(f'아무 입력 없이 끝까지 듣기 — {name}({res[1]:.1f}초): {TAIL}', not res[0], res[0])
-        # ① 대화의 첫 줄, ② 같은 대화의 그다음 줄, ③ 단서 설명 — 한 번의 플레이에서 이어서 듣는다.
-        # 빠른 조사 링크(?fast=1)의 첫 줄을 먼저 고른다 — 그래야 이 세 줄에서도 무입력 시계를 본다. 그 안에서는 긴 것.
-        firsts = sorted(pg.evaluate(PICK_FIRSTS), key=lambda x: (not x['fast'], -DUR.get(x['key'], 0)))
-        r1 = r2 = r3 = None
-        f = firsts[0] if firsts else {'ci': 0, 'fast': True, 'key': None}     # 첫 줄이 전부 무음이어도 단서는 듣는다
-        start(pg, f['ci'], f['fast'])
-        if f['key']:
-            r1 = listen(pg, f['key'], ON_LINE)
-            nxt = pg.evaluate("""(()=>{ const l=G.dlgQueue[G.dlgIdx+1]; if(!l) return null;
-              const k=VOICE.key(l.name.split(' · ')[0], l.text); return VOICE.have.has(k)?k:null; })()""")
-            if nxt and active(pg) == 'scr-dialog':
-                next_line(pg)
-                r2 = listen(pg, nxt, ON_LINE)
-        dialog(pg, 'W9', [])        # 남은 줄을 넘겨 허브로
-        if active(pg) == 'scr-hub':
-            for ri, rk in enumerate(pg.evaluate('Object.keys(G.C.ROOMS)')):
-                pg.click(f'#hubGrid .room-card >> nth={ri}')
-                for si in pg.evaluate(f"G.C.ROOMS['{rk}'].spots.map((s,i)=>s.clue?i:-1).filter(i=>i>=0)"):
-                    pg.click(f'#spots .spot-btn >> nth={si}')
-                    ln = pg.evaluate(LINE) if active(pg) == 'scr-dialog' else None
-                    if ln and ln['has']: r3 = listen(pg, ln['key'], ON_LINE); break
-                    dialog(pg, 'W9', [])
-                if r3: break
-                pg.click('#roomBack')
-        no_first = '프롤로그 첫 줄에 음성이 있는 사건이 없다'
-        heard('대화의 첫 줄', r1, no_first)
-        heard('대화의 그다음 줄', r2, no_first if not f['key'] else '음성 있는 첫 줄 바로 뒤에 음성 있는 줄이 없다')
-        heard('단서 설명 한 줄', r3, '이 사건에 첫 줄부터 음성이 있는 단서가 없다')
-        # ④ 심문 답변 — 빠른 조사 링크에서 듣는다(무입력 시계도 함께 본다)
-        answers = sorted(pg.evaluate(PICK_ANSWERS), key=lambda x: -DUR.get(x['key'], 0))
-        r4 = None
-        if answers:
-            la = answers[0]; start(pg, la['ci'], True); dialog(pg, 'W9', [])
-            pg.evaluate(UNLOCK); pg.click('#talkMenuBtn'); pg.click(f"#hubGrid .room-card >> nth={la['pi']}")
-            pg.click(f"#talkQs .q-btn >> nth={la['qi']}")
-            r4 = listen(pg, la['key'], "JSON.stringify([document.querySelector('.screen.active').id, G.$('talkAnswer').style.display])")
-        heard('심문 답변 하나', r4, '음성 있는 심문 답변이 하나도 없다')
-        # ⑤ 엔딩 글 — 빠른 조사로 엔딩까지 가서 듣는다
-        r5 = None
-        if end['has']:
-            start(pg, end['ci'], True); dialog(pg, 'W9', []); pg.evaluate(ready)
-            pg.click('#deduceBtn'); dialog(pg, 'W9', [])
-            for _ in range(pg.evaluate('G.DQ.length')):
-                pg.keyboard.press(str(pg.evaluate('G.DQ[G.deduceIdx].ans') + 1)); pg.wait_for_timeout(1750)
-            sim_then_reveal(pg, 'W9', [])
-            r5 = listen(pg, pg.evaluate("VOICE.key('내레이션', G.C.ending.text)"), "JSON.stringify([document.querySelector('.screen.active').id])")
-        heard('엔딩 글', r5, '엔딩 글에 음성이 있는 사건이 없다')
+        try:
+            TAIL = '한 번만·끝까지·재생 위치가 입력 뒤 흐른 시간을 앞서지 않음·음소거/음량/속도 그대로·끝난 뒤에도 화면 그대로'
+            ON_LINE = "JSON.stringify([document.querySelector('.screen.active').id, G.dlgIdx])"
+            def heard(name, res, why_skip):
+                if res is None: skip(f'아무 입력 없이 끝까지 듣기 — {name}: {TAIL}', why_skip)
+                else: check(f'아무 입력 없이 끝까지 듣기 — {name}({res[1]:.1f}초): {TAIL}', not res[0], res[0])
+            # ① 대화의 첫 줄, ② 같은 대화의 그다음 줄, ③ 단서 설명 — 한 번의 플레이에서 이어서 듣는다.
+            # 빠른 조사 링크(?fast=1)의 첫 줄을 먼저 고른다 — 그래야 이 세 줄에서도 무입력 시계를 본다. 그 안에서는 긴 것.
+            firsts = sorted(pg.evaluate(PICK_FIRSTS), key=lambda x: (not x['fast'], -DUR.get(x['key'], 0)))
+            r1 = r2 = r3 = None
+            f = firsts[0] if firsts else {'ci': 0, 'fast': True, 'key': None}     # 첫 줄이 전부 무음이어도 단서는 듣는다
+            start(pg, f['ci'], f['fast'])
+            if f['key']:
+                r1 = listen(pg, f['key'], ON_LINE)
+                nxt = pg.evaluate("""(()=>{ const l=G.dlgQueue[G.dlgIdx+1]; if(!l) return null;
+                  const k=VOICE.key(l.name.split(' · ')[0], l.text); return VOICE.have.has(k)?k:null; })()""")
+                if nxt and active(pg) == 'scr-dialog':
+                    next_line(pg)
+                    r2 = listen(pg, nxt, ON_LINE)
+            dialog(pg, 'W9', [])        # 남은 줄을 넘겨 허브로
+            if active(pg) == 'scr-hub':
+                for ri, rk in enumerate(pg.evaluate('Object.keys(G.C.ROOMS)')):
+                    pg.click(f'#hubGrid .room-card >> nth={ri}')
+                    for si in pg.evaluate(f"G.C.ROOMS['{rk}'].spots.map((s,i)=>s.clue?i:-1).filter(i=>i>=0)"):
+                        pg.click(f'#spots .spot-btn >> nth={si}')
+                        ln = pg.evaluate(LINE) if active(pg) == 'scr-dialog' else None
+                        if ln and ln['has']: r3 = listen(pg, ln['key'], ON_LINE); break
+                        dialog(pg, 'W9', [])
+                    if r3: break
+                    pg.click('#roomBack')
+            no_first = '프롤로그 첫 줄에 음성이 있는 사건이 없다'
+            heard('대화의 첫 줄', r1, no_first)
+            heard('대화의 그다음 줄', r2, no_first if not f['key'] else '음성 있는 첫 줄 바로 뒤에 음성 있는 줄이 없다')
+            heard('단서 설명 한 줄', r3, '이 사건에 첫 줄부터 음성이 있는 단서가 없다')
+            # ④ 심문 답변 — 빠른 조사 링크에서 듣는다(무입력 시계도 함께 본다)
+            answers = sorted(pg.evaluate(PICK_ANSWERS), key=lambda x: -DUR.get(x['key'], 0))
+            r4 = None
+            if answers:
+                la = answers[0]; start(pg, la['ci'], True); dialog(pg, 'W9', [])
+                pg.evaluate(UNLOCK); pg.click('#talkMenuBtn'); pg.click(f"#hubGrid .room-card >> nth={la['pi']}")
+                pg.click(f"#talkQs .q-btn >> nth={la['qi']}")
+                r4 = listen(pg, la['key'], "JSON.stringify([document.querySelector('.screen.active').id, G.$('talkAnswer').style.display])")
+            heard('심문 답변 하나', r4, '음성 있는 심문 답변이 하나도 없다')
+            # ⑤ 엔딩 글 — 빠른 조사로 엔딩까지 가서 듣는다
+            r5 = None
+            if end['has']:
+                start(pg, end['ci'], True); dialog(pg, 'W9', []); pg.evaluate(ready)
+                pg.click('#deduceBtn'); dialog(pg, 'W9', [])
+                for _ in range(pg.evaluate('G.DQ.length')):
+                    pg.keyboard.press(str(pg.evaluate('G.DQ[G.deduceIdx].ans') + 1)); pg.wait_for_timeout(1750)
+                sim_then_reveal(pg, 'W9', [])
+                r5 = listen(pg, pg.evaluate("VOICE.key('내레이션', G.C.ending.text)"), "JSON.stringify([document.querySelector('.screen.active').id])")
+            heard('엔딩 글', r5, '엔딩 글에 음성이 있는 사건이 없다')
+        except Exception as e:
+            # 듣던 줄 밖에서(다음 단계로 가던 중에) 페이지가 사라진 경우 — 남은 듣기는 하지 못했다
+            check('W9 를 끝까지 돌렸다(도중에 페이지가 다시 로드되거나 사라지지 않았다)', False, f'{type(e).__name__}: {str(e).splitlines()[0][:120]}')
 
         section('W10 위생')
         check('콘솔·페이지 에러 0건', not errs, errs[:5])
