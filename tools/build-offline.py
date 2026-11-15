@@ -11,9 +11,9 @@
 하는 일 (index.html 의 로직은 건드리지 않는다 — 넣기만 한다):
   1. @font-face 의 url('assets/fonts/*.woff2') 4개 → data:font/woff2;base64
   2. <meta charset> 바로 뒤에 '생성 파일' 표기 + 폰트 라이선스(SIL OFL 1.1) 원문 주석
-  3. <body> 바로 뒤(화면 마크업보다 앞)에 이미지 23장·BGM 2곡의 base64 블록 + 이를 모아
-     window.BIB_OFFLINE = {img:{...}, bgm:{...}} 를 만드는 작은 로더
-     — index.html 의 offURL() 이 이것을 blob: URL 로 바꿔 쓰고, CDN 폴백은 끈다.
+  3. <body> 바로 뒤(화면 마크업보다 앞)에 이미지 23장·BGM 2곡·대사 음성(VOICE_HAVE 의 파일
+     전부)의 base64 블록 + 이를 모아 window.BIB_OFFLINE = {img:{...}, bgm:{...}, voice:{...}} 를
+     만드는 작은 로더 — index.html 의 offURL() 이 이것을 blob: URL 로 바꿔 쓰고, CDN 폴백은 끈다.
 
 index.html·assets 를 고쳤으면 다시 돌린다. 기대한 패턴이 하나라도 없으면 아무것도
 쓰지 않고 실패한다(조용히 assets/ 를 참조하는 '가짜 단일 파일'이 나오는 것을 막는다).
@@ -90,6 +90,18 @@ def build():
     bgm_keys = sorted(set(re.findall(r'\bbgm:"(\w+)"', html)) | set(re.findall(r"ensure\('(\w+)'\)", html)))
     need(bgm_keys, 'bgm 키를 찾지 못했다')
 
+    # 대사 음성 — VOICE_HAVE 가 곧 탑재 목록이다. 폴더와 어긋나면(목록에만/파일에만) 싣지 않는다:
+    # 목록에만 있으면 무음 줄이, 파일에만 있으면 쓰이지 않는 수백 KB 가 조용히 실린다.
+    m = re.findall(r'^const VOICE_HAVE = "([0-9a-f ]*)";$', html, re.M)
+    need(len(m) == 1, 'const VOICE_HAVE = "…"; 한 줄을 찾지 못했다')
+    voice_keys = m[0].split()
+    need(all(re.fullmatch(r'[0-9a-f]{8}', k) for k in voice_keys), 'VOICE_HAVE 에 8자리 16진이 아닌 키가 있다')
+    vdir = ROOT / 'assets' / 'voice'
+    vfiles = sorted(p.stem for p in vdir.glob('*.mp3')) if vdir.is_dir() else []
+    need(sorted(voice_keys) == vfiles,
+         f'VOICE_HAVE 와 assets/voice/*.mp3 가 어긋난다 — 목록에만: {sorted(set(voice_keys) - set(vfiles))[:5]}, '
+         f'파일에만: {sorted(set(vfiles) - set(voice_keys))[:5]}  (python3 tools/build-voice.py manifest)')
+
     font_re = re.compile(r"url\('(assets/fonts/([\w.-]+\.woff2))'\)")
     fonts = font_re.findall(html)
     need(len(fonts) == 4, f"url('assets/fonts/*.woff2') 가 4개가 아니다: {len(fonts)}")
@@ -114,6 +126,7 @@ def build():
     payload = {
         'img': {k: b64(read_asset(f'assets/{k}.webp', 'webp')) for k in img_keys},
         'bgm': {k: b64(read_asset(f'assets/bgm/{k}.mp3', 'mp3')) for k in bgm_keys},
+        'voice': {k: b64(read_asset(f'assets/voice/{k}.mp3', 'mp3')) for k in voice_keys},
     }
     # base64 는 JS 문자열 리터럴이 아니라 실행되지 않는 text/plain 블록에 싣는다 — JS 파서를
     # 거치지 않아 시작이 빠르다(CPU 4배 감속 실측: 타이틀 이미지 2.06s → 1.39s, 디코드 개선 포함).
@@ -124,8 +137,8 @@ def build():
     # 직렬화하므로, 걷어 내면 저장 사본에서 이미지·음악이 사라진다(실측).
     # base64 알파벳에는 < 가 없으므로 </script>·<!-- 가 끼어들 수 없다.
     blocks = ''.join(f'<script type="text/plain" id="bib-{kind}-{k}">{v}</script>\n'
-                     for kind in ('img', 'bgm') for k, v in payload[kind].items())
-    loader = ('<script>' + SEAM + '={img:{},bgm:{}};'
+                     for kind in ('img', 'bgm', 'voice') for k, v in payload[kind].items())
+    loader = ('<script>' + SEAM + '={img:{},bgm:{},voice:{}};'
               "document.querySelectorAll('script[type=\"text/plain\"][id^=\"bib-\"]').forEach(function(e){"
               "var p=e.id.split('-');" + SEAM + "[p[1]][p[2]]=e.textContent;});</script>")
     out = out.replace('<body>', '<body>\n' + blocks + loader, 1)
@@ -134,17 +147,18 @@ def build():
     # JS 의 'assets/...' 문자열은 BIB_OFFLINE 이 없을 때의 분기라 남아도 쓰이지 않는다(런타임 검사 대상).
     need("url('assets/" not in out, "CSS 의 url('assets/...') 참조가 남았다")
     need(out.index(meta) < 1024, '<meta charset> 이 첫 1024바이트 밖이다 — file:// 에서 한글이 깨진다')
-    nblk = len(payload['img']) + len(payload['bgm'])
+    nblk = len(payload['img']) + len(payload['bgm']) + len(payload['voice'])
     need(out.count('<script') == 1 + nblk + 1, f'<script> 가 본문 1 + 데이터 {nblk} + 로더 1 개가 아니다')
     need(out.index(SEAM + '={') < out.index('class="screen'), '데이터·로더가 화면 마크업보다 뒤에 있다')
     data = out.encode('utf-8')
-    need(8_000_000 < len(data) < 20_000_000, f'크기가 이상하다: {len(data):,} B')
+    need(8_000_000 < len(data) < 30_000_000, f'크기가 이상하다: {len(data):,} B')
     sizes = {
         '이미지': sum(len(v) for v in payload['img'].values()),
         'BGM': sum(len(v) for v in payload['bgm'].values()),
+        '음성': sum(len(v) for v in payload['voice'].values()),
         '폰트': sum(len(b64(read_asset(r, 'woff2'))) for r, _ in fonts),
     }
-    return data, len(img_keys), bgm_keys, sizes
+    return data, len(img_keys), bgm_keys, len(voice_keys), sizes
 
 
 def main():
@@ -154,7 +168,7 @@ def main():
     a = ap.parse_args()
     out = a.out.resolve()
     name = out.relative_to(ROOT) if out.is_relative_to(ROOT) else out
-    data, nimg, bgm, sizes = build()
+    data, nimg, bgm, nvoice, sizes = build()
     if a.check:
         cur = out.read_bytes() if out.is_file() else b''
         if cur != data:
@@ -166,7 +180,7 @@ def main():
     out.write_bytes(data)
     print(f'{name}  {len(data) / 1e6:.2f} MB  sha256 {hashlib.sha256(data).hexdigest()[:16]}')
     print(f'  이미지 {nimg}장 {sizes["이미지"] / 1e6:.2f} MB · BGM {len(bgm)}곡({", ".join(bgm)}) '
-          f'{sizes["BGM"] / 1e6:.2f} MB · 폰트 4벌 {sizes["폰트"] / 1e6:.2f} MB (base64 기준)')
+          f'{sizes["BGM"] / 1e6:.2f} MB · 음성 {nvoice}줄 {sizes["음성"] / 1e6:.2f} MB · 폰트 4벌 {sizes["폰트"] / 1e6:.2f} MB (base64 기준)')
     return 0
 
 

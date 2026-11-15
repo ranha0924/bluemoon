@@ -12,14 +12,17 @@ O1 최신성   O2 에셋(이미지 23장·폰트 4면)   O3 전체 플레이(사
 단서·증언·3D 발견·추리·재현 등급 무영향·엔딩·BGM 내장본 재생)   O4 임명장 PNG
 O5 위생(페이지 외 요청 0 · 실패 요청 0 · 콘솔 에러 0)
 O6 로딩 중 이른 클릭(CPU 4배 감속) — 타이틀 버튼이 보이는 순간 이미 동작해야 한다
-O7 '다른 이름으로 저장(웹페이지, 전체)' 사본(현재 DOM 직렬화)도 이미지를 품고 있다
+O7 '다른 이름으로 저장(웹페이지, 전체)' 사본(현재 DOM 직렬화)도 이미지·음성을 품고 있다
+O8 대사 음성 내장본 — 블록·로더·목록 일치, blob: 재생, 같은 답변 다시 묻기, 전부 디코드
 """
-import shutil, subprocess, sys, tempfile
+import os, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / 'dist' / 'before-it-blows-offline.html'
-CH = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+# 크롬 경로 — BIB_CHROME 환경 변수가 우선, 없으면 이 환경에 깔린 것 중 있는 것(전부 없으면 playwright 기본).
+CH = next((p for p in (os.environ.get('BIB_CHROME'), '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+                       '/opt/pw-browsers/chromium') if p and os.path.exists(p)), None)
 OK, BAD = [], []
 for _s in (sys.stdout, sys.stderr):   # 한국어 윈도우 cp949 리다이렉트에서 '—' 로 죽지 않게
     try: _s.reconfigure(errors='replace')
@@ -167,6 +170,47 @@ def main():
             n = pg.evaluate("Object.values(IMG).filter(u=>u.startsWith('blob:')).length")
             check(f'저장 사본에서도 내장 이미지 {n}/23 · 타이틀 표시',
                   n == 23 and pg.evaluate("document.getElementById('titleImg').naturalWidth>0"))
+            nv = pg.evaluate("[VOICE.have.size, Object.values(BIB_OFFLINE.voice).filter(v=>v&&v.length>1000).length]")
+            check(f'저장 사본에서도 내장 음성 {nv[1]}/{nv[0]}', nv[0] > 0 and nv[0] == nv[1])
+            ctx.close()
+
+            section('O8 대사 음성 내장본')
+            ctx = b.new_context(viewport={'width': 1280, 'height': 800}, offline=True); pg = ctx.new_page()
+            reqs, errs = [], []
+            pg.on('request', lambda q: reqs.append(q.url))
+            pg.on('pageerror', lambda e: errs.append(str(e)))
+            pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
+            pg.goto(url + '?fast=0'); pg.wait_for_timeout(500)
+            nv = pg.evaluate("""[VOICE.have.size, Object.keys(BIB_OFFLINE.voice).length,
+                document.querySelectorAll('script[type="text/plain"][id^="bib-voice-"]').length]""")
+            check(f'음성 {nv[0]}줄 — 목록(VOICE_HAVE)·로더·내장 블록 수 일치', nv[0] > 0 and nv[0] == nv[1] == nv[2], nv)
+
+            def voiced():   # 지금 뜬 대사가 내장본(blob:)에서 실제로 굴러가는가
+                for _ in range(120):
+                    v = pg.evaluate("""(()=>{const a=VOICE.el; return !!(a&&VOICE.cur&&a.currentSrc.startsWith('blob:')
+                        &&!a.paused&&!a.error&&a.currentTime>0.03)})()""")
+                    if v: return True
+                    pg.wait_for_timeout(20)
+                return False
+            idle = "VOICE.cur===null && (!VOICE.el || VOICE.el.paused)"
+            pg.click('#scr-title .btn'); pg.click('#caseGrid .case-card >> nth=0')
+            check('프롤로그 첫 줄 — 내장본(blob:)에서 재생', voiced())
+            adv(pg)
+            check('대화가 끝나 허브로 — 음성 정지', active(pg) == 'scr-hub' and pg.evaluate(idle))
+            pg.click('#talkMenuBtn'); pg.click('#hubGrid .room-card >> nth=0'); pg.click('#talkQs .q-btn >> nth=0')
+            check('심문 답변 — 내장본에서 재생', voiced())
+            pg.keyboard.press('Escape'); pg.wait_for_timeout(60)
+            check('답변을 닫으면 정지', pg.evaluate(idle))
+            pg.click('#talkQs .q-btn >> nth=0')   # offURL 은 한 번 쓴 원문을 비운다 — blob URL 을 붙들고 있어야 다시 나온다
+            check('같은 답변을 다시 물어도 재생', voiced())
+            pg.keyboard.press('Escape')
+            dec = pg.evaluate("""Promise.all([...VOICE.have].map(k=>new Promise(r=>{
+                const u=VOICE.url[k]||(VOICE.url[k]=offURL('voice',k,'audio/mpeg')); const a=new Audio();
+                a.onloadedmetadata=()=>r(u.startsWith('blob:')&&a.duration>0.6); a.onerror=()=>r(false);
+                setTimeout(()=>r(false),15000); a.preload='metadata'; a.src=u; })))""")
+            check(f'내장 음성 {len(dec)}개 — 전부 blob 에서 디코드', len(dec) == nv[0] and all(dec), dec.count(False))
+            other = [u for u in reqs if not u.startswith(('blob:', 'data:')) and u.split('?')[0] != url]
+            check('음성 재생 중 페이지 외 요청 0건 · 에러 0건', not other and not errs, (other[:3], errs[:3]))
             b.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

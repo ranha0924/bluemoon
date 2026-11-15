@@ -822,7 +822,7 @@
       <div id="talkQs"></div>
       <button class="btn back" id="talkBack" style="margin-top:6px" onclick="G.backFromTalk()">인물 선택으로</button>
     </div>
-    <div class="talk-answer" id="talkAnswer" onclick="this.style.display='none'">
+    <div class="talk-answer" id="talkAnswer" onclick="G.closeAnswer()">
       <div class="dlg-name" id="ansName"></div>
       <div class="dlg-text" id="ansText"></div>
       <div class="dlg-next">클릭 또는 Enter로 닫기</div>
@@ -1146,7 +1146,7 @@ const ICON = {
     + '<path d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg>'
 };
 
-/* ---------- 사운드 (효과음은 WebAudio 합성, 외부 파일 없음 — 배경음악만 예외, 아래 BGM) ---------- */
+/* ---------- 사운드 (효과음은 WebAudio 합성, 외부 파일 없음 — 배경음악·대사 음성만 예외, 아래 BGM·VOICE) ---------- */
 const SND = {
   ctx:null, on:true, rainNodes:null, wantRain:false,
   ensure(){ if(!this.ctx){ try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return this.ctx; },
@@ -1206,11 +1206,12 @@ const SND = {
     this.applyRain();
     this.applyHiss();
     BGM.apply();
+    VOICE.apply();
     return this.on;
   }
 };
 
-/* ---------- 배경음악 (BGM) — 유일한 외부 사운드 파일 ----------
+/* ---------- 배경음악 (BGM) — 대사 음성(아래 VOICE)과 함께 둘뿐인 외부 사운드 파일 ----------
    사건별 1곡을 CASES[].bgm 키로 매핑한다 (assets/bgm/<키>.mp3, Suno AI 생성 자작 음원 —
    오프라인 단일 파일 판은 같은 파일의 내장본을 blob: 으로 쓴다, 위 offURL).
    타이틀·로비는 무음 — 재생 시작이 항상 startCase(클릭/Enter 제스처 스택 안)라
@@ -1257,6 +1258,44 @@ const BGM = {
       else a.volume=v;
     }, this.STEP);
   }
+};
+
+/* ---------- 대사 음성 (VOICE) ----------
+   인물 대사를 미리 합성해 둔 파일(assets/voice/<키>.mp3, ElevenLabs TTS — 생성·검수는
+   tools/build-voice.py, 대본·배역·원본은 tools/voice/)을 대사가 뜰 때 튼다. 실행 중에는
+   어떤 API 도 부르지 않는다.
+   키 = FNV-1a 32bit( UTF-8( 화자 + '|' + PLAIN(대사) ) ) 의 16진 8자리 — '내용 주소'다.
+   대사를 고치면 키가 달라져 그 줄만 조용히 무음이 된다: 어긋난 음성이 나오는 일도,
+   없는 파일을 요청하는 일도 구조적으로 없다(재합성은 API 키가 있을 때만 가능하다).
+   화자는 화면에 뜨는 이름의 ' · ' 앞부분(나원래·한세인·내레이션…)이라 엔진은 배역을
+   모른다 — 단서 설명('단서 · …')은 파일이 없어 그대로 무음이고, 새 사건도 엔진 수정이 없다.
+   VOICE_HAVE 는 실제로 있는 파일의 키 목록이다(build-voice.py manifest 가 이 한 줄을 쓴다).
+   <audio> 는 하나를 계속 쓴다 — 첫 재생이 startCase 의 클릭/Enter 제스처 안이라, 타이머가
+   여는 대사(재현 뒤 진상 공개 등)도 같은 요소로 그대로 이어진다. 음소거는 BGM 과 같이
+   muted(SND.on 연동). 음량은 파일에 구워 두고 volume 은 건드리지 않는다(iOS 는 volume 을
+   무시한다). 정지 지점은 G.show() 하나 — 화면이 바뀌면 음성도 끝난다(+ 답변 패널 닫기). */
+const VOICE_HAVE = "005784f5 01939e0d 0201d87c 064582c4 0e565ade 213ec5a0 2a583473 2b541913 30bc7cbe 33b65f24 36d2671f 3ad82ca3 3bfb3d8c 3da2decc 4f42dc37 50f3463c 51e8beb5 54ffb5ad 567dddf5 58e8ba09 5bea1849 5fc29d44 6099644e 665d1132 6bd718dc 6ef27b71 6fbd1b40 70fd0cbe 7539bca3 7d8ea07d 87147b2a 87ef5f7e 8a22097b 90d7674d 911010f7 93ee39d3 96a0bade 9759c5b2 97b01489 97fed309 9cb996d1 9d5441ff a1064ba3 a56bd81c aca4f3bc b3a0164d b679f0d8 b7889bea ba76aeb4 be9816cc d069d70b d2c81353 e1068e6f e23de203 e394b130 e68c8748 ec528641 ed3e6f27 f52f65c4 fc2acccf fd962baa ffc2489e";
+const VOICE = {
+  el:null, cur:null, url:{}, have:new Set(VOICE_HAVE.split(' ').filter(Boolean)),
+  key(who, text){
+    const b=new TextEncoder().encode(who+'|'+PLAIN(text)); let h=0x811c9dc5;
+    for(let i=0;i<b.length;i++){ h^=b[i]; h=Math.imul(h,0x01000193); }
+    return (h>>>0).toString(16).padStart(8,'0');
+  },
+  // 파일이 없는 줄(단서 설명·수정된 대사)은 직전 음성만 끊고 조용히 넘어간다.
+  say(who, text){
+    const k=this.key(who,text);
+    if(!this.have.has(k)){ this.stop(); return; }
+    // 오프라인 판의 내장본은 offURL 이 한 번 쓰면 원문을 비우므로 blob URL 을 붙들어 둔다
+    // (같은 질문을 다시 물었을 때도 재생되어야 한다).
+    const u=this.url[k]||(this.url[k]=OFF?offURL('voice',k,'audio/mpeg'):'assets/voice/'+k+'.mp3');
+    if(!u){ this.stop(); return; }
+    const a=this.el||(this.el=new Audio());
+    a.muted=!SND.on; a.src=u; this.cur=k;     // src 대입은 같은 값이어도 처음부터 다시 로드한다
+    const p=a.play(); if(p&&p.catch) p.catch(()=>{});   // 끊긴 재생·자동재생 거부 → 조용히 무음
+  },
+  stop(){ if(this.el&&this.cur){ this.el.pause(); this.cur=null; } },
+  apply(){ if(this.el) this.el.muted=!SND.on; }   // SND.toggle 이 부른다
 };
 // blur(): 마우스로 누른 버튼에 포커스가 남으면, 화면이 바뀐 뒤의 Enter/Space 가
 // 그 '숨은 버튼'을 네이티브 클릭하는 잠재 결함이 있다 — 캡처 단계에서 버튼을 잡아
@@ -1309,7 +1348,7 @@ document.addEventListener('keydown', e=>{
   // 2) 심문 답변 패널이 떠 있으면 먼저 닫는다
   const ans=G.$('talkAnswer');
   if(id==='scr-talk'&&ans.style.display==='block'){
-    if(k==='Escape'||k==='Enter'||k===' '){ e.preventDefault(); ans.style.display='none'; }
+    if(k==='Escape'||k==='Enter'||k===' '){ e.preventDefault(); G.closeAnswer(); }
     return;
   }
   // 3) Enter/Space — 포커스된 카드(사건·방·인물)를 활성화하고, 대화를 진행한다
@@ -2081,6 +2120,7 @@ const G = {
 
   $(id){ return document.getElementById(id); },
   show(id){
+    VOICE.stop();   // 화면이 바뀌면 대사 음성도 끝난다 — 음성의 단일 정지 지점
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     this.$(id).classList.add('active');
     if(id==='scr-hub') this.renderHub();
@@ -2145,6 +2185,8 @@ const G = {
     this.$('dlgName').textContent=l.name;
     this.setImg('dlgBg', l.img||null);
     this.setImg('dlgPortrait', l.pt||null);
+    // 화자는 이름표다 — 초상(pt)은 '듣는 사람'일 때도 있다(한세인이 한여름에게 말하는 줄).
+    VOICE.say(l.name.split(' · ')[0], l.text);
     // 등장 애니메이션 재생. 같은 인물이 연속으로 나와도 다시 트리거되도록 리플로우를 강제한다.
     const _p=this.$('dlgPortrait');
     _p.classList.remove('slide'); void _p.offsetWidth; _p.classList.add('slide');
@@ -2253,7 +2295,7 @@ const G = {
     BGM.fadeOut();
     this.disarmLobbyBtns();
     this.closeNotebook();
-    this.$('talkAnswer').style.display='none';
+    this.closeAnswer();
     this.show('scr-lobby');
   },
   // 사건 진입점. 진행 상태를 전부 초기화하므로 로비를 오가도 이전 사건이 남지 않는다.
@@ -2263,7 +2305,7 @@ const G = {
     this.hearts=3; this.wrong=0; this.deduceIdx=0; this.currentRoom=null; this._wrongSel={};
     this.disarmLobbyBtns();   // 장전 상태로 로비를 오간 경우 라벨 누수 방지
     this.closeNotebook();
-    this.$('talkAnswer').style.display='none';
+    this.closeAnswer();
     this.$('hubTitle').textContent=this.C.hubTitle;
     this.$('roomBack').textContent=this.C.backLabel;
     this.$('clueTot').textContent='/'+Object.keys(this.C.CLUES).length;
@@ -2371,7 +2413,9 @@ const G = {
   // 심문 화면의 뒤로가기 — 방 카드가 아니라 인물 선택창으로 되돌아간다.
   // 답변 패널을 반드시 닫는다 — 안 닫으면 다음 인물 화면에 이전 인물의 답변이
   // 그대로 남아 발화자가 뒤바뀌어 보인다.
-  backFromTalk(){ this.$('talkAnswer').style.display='none'; this.show('scr-hub'); this.openTalkMenu(true); },
+  backFromTalk(){ this.closeAnswer(); this.show('scr-hub'); this.openTalkMenu(true); },
+  // 답변 패널의 단일 닫기 지점(패널 클릭·Esc/Enter/Space·화면 이탈) — 답변 음성도 여기서 끊는다.
+  closeAnswer(){ this.$('talkAnswer').style.display='none'; VOICE.stop(); },
   openTalkMenu(quiet){
     // 허브 그리드를 인물 카드로 바꿔 심문 대상을 고른다.
     // 인물 선택 중에는 [인물 심문] 버튼 자체가 '조사로 돌아가기'(back)로 바뀐다 —
@@ -2428,6 +2472,8 @@ const G = {
           this.toast(ICON.talk+'<span>증언 확보 — '+this.C.TESTI[qa.testi].name+'</span>');
         }
         this.openTalk(key);
+        // 반드시 openTalk 뒤 — openTalk 가 show() 를 지나며 음성을 끊기 때문에 앞에 두면 바로 죽는다.
+        VOICE.say(p.name.split(' · ')[0], qa.a);
       };
       box.appendChild(b);
     });

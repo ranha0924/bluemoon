@@ -5,11 +5,13 @@
 survey.html 시절의 스위트를 내장판 기준으로 재작성했다.
 로컬 서버가 필요하다:  python3 -m http.server 8899  (저장소 루트에서)
 """
-import json, re, sys, time, urllib.request
+import json, os, re, sys, time, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CH = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+# 크롬 경로 — BIB_CHROME 환경 변수가 우선, 없으면 이 환경에 깔린 것 중 있는 것(전부 없으면 playwright 기본).
+CH = next((p for p in (os.environ.get('BIB_CHROME'), '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+                       '/opt/pw-browsers/chromium') if p and os.path.exists(p)), None)
 BASE = 'http://localhost:8899/index.html'
 OK, BAD = [], []
 

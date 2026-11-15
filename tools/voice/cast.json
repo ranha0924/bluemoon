@@ -1,0 +1,19 @@
+{
+ "model": "eleven_v4",
+ "output_format": "mp3_44100_128",
+ "language_code": "ko",
+ "voices": {
+  "내레이션": {"voice_id": "8G6jifm9f1BhHXadvwOt", "voice_name": "Kang - Calm, Deep Korean Storyteller", "role": "내레이션 — 깊고 차분한 남성 이야기꾼"},
+  "한세인": {"voice_id": "ah4r1hZOydd3XWlHOm3Y", "voice_name": "Jian.K – Calm mid-low, trustworthy voice", "role": "탐정 — 허스키한 여성 중저음"},
+  "단서": {"voice_id": "ah4r1hZOydd3XWlHOm3Y", "voice_name": "Jian.K – Calm mid-low, trustworthy voice", "role": "단서 설명 = 탐정의 독백 (보험용 원본, 게임 미탑재)"},
+  "나원래": {"voice_id": "5ON5Fnz24cnOozEQfGAm", "voice_name": "Namchun - Encouraging and Natural", "role": "캠핑장 사장(56) — 온화한 노년 남성"},
+  "한여름": {"voice_id": "FhznnhFhq61uh1kbvfw1", "voice_name": "Bee - Bright & Friendly", "role": "알바(22) — 밝고 자연스러운 젊은 여성"},
+  "구백동": {"voice_id": "PLfpgtLkFW07fDYbUiRJ", "voice_name": "Bongpal - Cheerful, Clear and Measured", "role": "캠퍼(51) — 쾌활하고 호기로운 중노년 남성"},
+  "김초롱": {"voice_id": "vJ170fCwESgE1tjW39So", "voice_name": "Sena - Friendly Cheerful", "role": "초등학생(12) — 밝고 또렷한 고음 (성인 여성 성우)"},
+  "방한욱": {"voice_id": "xMFDeM9Ex3CdGGx9m3uS", "voice_name": "Cha Woo - Calm, Clear and Steady", "role": "펜션 사장(58) — 차분한 중년 남성"},
+  "온수철": {"voice_id": "UmYoqGlufKxhJ6NCx5Mv", "voice_name": "Jang Ho - Serious, Husky and Measured", "role": "관리인(63) — 허스키하고 과묵한 노년 남성"},
+  "유설아": {"voice_id": "uyVNoMrnUku1dZyVEXwD", "voice_name": "Anna Kim - Tender, Calm and Clear", "role": "등산객(29) — 여리고 차분한 젊은 여성"},
+  "김파랑": {"voice_id": "O2KReOFLpoR65nz6C9Se", "voice_name": "Aria - Bright & Youthful Korean", "role": "펜션 손님(11) — 밝고 어린 톤 (성인 여성 성우)"},
+  "정확한": {"voice_id": "s07IwTCOrCDCaETjUVjx", "voice_name": "Hyunbin - Diplomatic, Clear and Measured", "role": "가스안전 조사관 — 또렷하고 절제된 중년 남성"}
+ }
+}
