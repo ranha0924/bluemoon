@@ -22,6 +22,9 @@ W3 정지 경로(다음 줄·대화 종료·답변 닫기 4종·인물 선택으
    — 검사에 쓸 줄은 페이지에서 고른다(음성 있는 답변, 음성 있는 줄이 둘·셋 이어지는 대화, 엔딩 글에 음성이
    있는 사건, 빠른 조사 첫 줄에 음성이 있는 사건). 그런 줄이 하나도 없어 못 한 검사는 '건너뜀'으로 적고,
    그때는 마지막 줄이 'PASS(부분)'이다(건너뜀은 통과가 아니다). 재생 중인 음성 요소의 수도 센다 — 겹치면 실패.
+종료 코드: 0 전부 통과 · 1 실패 있음 · 2 실행 불가(서버 없음·다른 폴더) · 3 실패는 없지만 건너뛴 검사 있음.
+한계: 여기서 보는 것은 헤드리스 크로미움에서의 동작이다. 고친 줄이 많을수록 같은 동작을 확인하는 횟수가
+줄어든다(각 검사에 붙은 '(N회)'가 그 횟수다).
 W4 같은 질문 다시 묻기   W5 음소거 연동·음량 불변   W6 고친 대사는 무음·무요청
 W7 키보드만으로 완주   W8 키오스크 무입력 복귀   W9 위생(에러·4xx·외부 요청)
 """
@@ -121,7 +124,7 @@ def open_run(pg, run, edit=None):
     pg.goto(f"{BASE}?fast={int(run['fast'])}"); pg.wait_for_timeout(400)
     if edit is not None: pg.evaluate(f"CASES.{run['ck']}.{run['arr']}[{edit}].text += ' 부탁드립니다.'")
     pg.click('#scr-title .btn'); pg.click(f"#caseGrid .case-card >> nth={run['ci']}"); settle(pg)
-    if 'eveal' in run['arr']:
+    if 'reveal' in run['arr'].lower():     # REVEAL · fastReveal
         dialog(pg, 'run', [])
         pg.evaluate(f"G.playDialog(G.C.{run['arr']}, ()=>G.show('scr-hub'))")
     for _ in range(run['i']): next_line(pg)
@@ -139,13 +142,26 @@ def ask(pg, ans, menu_open=False):
     pg.click(f"#hubGrid .room-card >> nth={ans['pi']}"); pg.click(f"#talkQs .q-btn >> nth={ans['qi']}")
 
 
+EXITS = {}      # 대화가 끝나 넘어간 화면 → [마지막 줄의 음성이 나던 중에 나간 횟수, 그중 음성이 남은 횟수]
+TIMER = []      # 타이머가 연 진상 공개 첫 줄(음성 있는 경우)이 입력 없이 재생됐는가
+
+
 def dialog(pg, tag, problems, first_enter=True):
-    """대화 화면을 끝까지 넘기며 줄마다 음성을 검사한다. 진행은 키보드(Enter)만 쓴다."""
+    """대화 화면을 끝까지 넘기며 줄마다 음성을 검사한다. 진행은 키보드(Enter)만 쓴다.
+    마지막 줄의 음성이 나던 중에 대화를 닫았으면, 넘어간 화면(허브·방·추리)에서 끊겼는지도 본다."""
+    voiced = False
     for _ in range(40):
-        if active(pg) != 'scr-dialog': return
+        scr = active(pg)
+        if scr != 'scr-dialog':
+            if voiced and scr != 'scr-end':      # 엔딩은 제 낭독이 곧바로 시작되므로 따로 본다
+                pg.wait_for_timeout(40); ok = silent(pg)
+                e = EXITS.setdefault(scr, [0, 0]); e[0] += 1; e[1] += (not ok)
+                if not ok: problems.append(f'{tag} 대화가 끝났는데 {scr} 에서 음성이 계속 난다 {st(pg)}')
+            return
         ln = pg.evaluate(LINE)
+        voiced = False
         if ln['has']:
-            ms = wait_playing(pg, ln['key'])
+            ms = wait_playing(pg, ln['key']); voiced = ms is not None
             if ms is None: problems.append(f"{tag} {ln['who']} {ln['key']} 재생 안 됨 {st(pg)}")
             else:
                 HEARD.add(ln['key']); LAT.append(ms)
@@ -233,10 +249,11 @@ def sim_then_reveal(pg, tag, problems):
     for _ in range(80):
         if active(pg) == 'scr-dialog': break
         pg.wait_for_timeout(50)
+    if active(pg) != 'scr-dialog':
+        problems.append(f'{tag} 재현 뒤 진상 공개가 열리지 않음'); TIMER.append(False); return
     ln = pg.evaluate(LINE)
-    timer_ok = (wait_playing(pg, ln['key']) is not None) if ln['has'] else silent(pg)
+    if ln['has']: TIMER.append(wait_playing(pg, ln['key']) is not None)   # 음성 없는 첫 줄은 세지 않는다(공허한 통과 방지)
     dialog(pg, tag + ' 진상', problems)
-    return timer_ok
 
 
 def play(pg, idx, fast, url=None):
@@ -247,9 +264,8 @@ def play(pg, idx, fast, url=None):
     clues(pg, tag, problems)
     talks(pg, tag, problems, closes)
     deduce(pg, tag, problems, regroup=not fast)
-    timer_ok = sim_then_reveal(pg, tag, problems)
+    sim_then_reveal(pg, tag, problems)
     check(f'{tag} 모든 대사가 제 파일로 재생(파일 없는 줄은 무음)', not problems, problems[:3])
-    check(f'{tag} 타이머가 연 진상 공개 첫 줄도 입력 없이 재생', timer_ok)
     check(f'{tag} 엔딩 도달 · 엔딩 글 낭독(파일 없으면 무음)', active(pg) == 'scr-end' and ending_voice(pg), st(pg))
     return closes
 
@@ -317,6 +333,12 @@ def main():
                 for how, v in play(pg, idx, fast).items(): closes.setdefault(how, []).extend(v)
         have = set(pg.evaluate('[...VOICE.have]'))
         check(f'들은 음성 {len(HEARD)}개 = 탑재된 음성 {len(have)}개 전부', HEARD == have, sorted(have - HEARD)[:5])
+        if TIMER: check(f'타이머가 연 진상 공개 첫 줄도 입력 없이 재생 ({len(TIMER)}회)', all(TIMER))
+        else: skip('타이머가 연 진상 공개 첫 줄도 입력 없이 재생', '진상 공개 첫 줄에 음성이 있는 사건이 없다')
+        for scr, nm in (('scr-hub', '허브'), ('scr-room', '방'), ('scr-deduce', '추리')):
+            e = EXITS.get(scr)
+            if e: check(f'음성이 나던 중에 대화를 닫으면 {nm} 화면에서는 끊겨 있다 ({e[0]}회)', e[1] == 0, f'{e[1]}회 남음')
+            else: skip(f'음성이 나던 중에 대화를 닫으면 {nm} 화면에서는 끊겨 있다', f'{nm} 화면으로 끝나는 대화의 마지막 줄에 음성이 없다')
         lat = sorted(LAT)
         print(f'       재생 시작까지: 중앙값 {lat[len(lat) // 2]:.0f}ms · 최대 {lat[-1]:.0f}ms (localhost, {len(lat)}회)')
 
@@ -334,11 +356,6 @@ def main():
             check('다음 줄로 넘기면 음성도 다음 줄로 바뀐다 — 한 번에 한 음성만', ok0 and ok1 and st(pg)['n'] == 1, st(pg))
         else:
             skip('다음 줄로 넘기면 음성도 다음 줄로 바뀐다 — 한 번에 한 음성만', '음성 있는 줄이 둘 이어지는 대화가 없다')
-        start(pg, 0, False)
-        for _ in range(12):
-            if active(pg) != 'scr-dialog': break
-            pg.keyboard.press('Enter'); pg.wait_for_timeout(40)
-        check('대화가 끝나 허브로 — 음성 정지', active(pg) == 'scr-hub' and silent(pg), st(pg))
         if ans:
             ka = ans['key']
             start(pg, ans['ci'], False); dialog(pg, 'W3', [])
@@ -474,19 +491,21 @@ def main():
 
         section('W8 키오스크 무입력 복귀')
         kc = pg.evaluate(PICK_FAST0)
-        start(pg, kc if kc is not None else 0, True)
-        pg.evaluate('G.KIOSK_WARN=1500; G.KIOSK_OUT=3000')
-        k0 = pg.evaluate(LINE)['key']
-        was = wait_playing(pg, k0) is not None if kc is not None else None
-        pg.wait_for_timeout(1600); still = st(pg)
-        pg.wait_for_timeout(3600)
-        back = active(pg) == 'scr-title' and pg.evaluate('VOICE.el===null')
+        start(pg, kc if kc is not None else 0, True); t0 = time.time()
         if kc is not None:
-            check('음성이 나오는 중에도 무입력이면 처음 화면으로 돌아간다(음성은 입력이 아니다)',
-                  was and still['cur'] == k0 and back, (still, active(pg)))
+            # 음성 길이보다 조금 긴 무입력 한도를 건다 — 음성이 시작될 때도, 나는 동안에도, 끝나는 순간에도
+            # 무입력 시계를 되감지 않아야 한도 직후에 복귀한다(셋 중 하나라도 되감으면 그때까지 복귀하지 못한다).
+            k0 = pg.evaluate(LINE)['key']; was = wait_playing(pg, k0) is not None
+            d = pg.evaluate('isFinite(VOICE.el.duration) ? VOICE.el.duration : 0')
+            pg.evaluate(f'G.KIOSK_WARN={int((d + 1) * 1000)}; G.KIOSK_OUT={int((d + 2.5) * 1000)}')
+            pg.wait_for_timeout(1500); still = st(pg)
+            pg.wait_for_timeout(max(0, int((t0 + d + 5.0 - time.time()) * 1000)))
+            check(f'음성이 시작되고·나고·끝나도({d:.1f}초) 무입력이면 처음 화면으로 돌아간다(음성은 입력이 아니다)',
+                  was and still['cur'] == k0 and active(pg) == 'scr-title' and pg.evaluate('VOICE.el===null'), (still, active(pg)))
         else:
-            skip('음성이 나오는 중에도 무입력이면 처음 화면으로 돌아간다(음성은 입력이 아니다)', '빠른 조사 첫 줄에 음성이 있는 사건이 없다')
-            check('무입력이면 처음 화면으로 돌아간다(음성 없는 줄에서)', back, active(pg))
+            skip('음성이 나와도 무입력이면 처음 화면으로 돌아간다(음성은 입력이 아니다)', '빠른 조사 첫 줄에 음성이 있는 사건이 없다')
+            pg.evaluate('G.KIOSK_WARN=1500; G.KIOSK_OUT=3000'); pg.wait_for_timeout(5200)
+            check('무입력이면 처음 화면으로 돌아간다(음성 없는 줄에서)', active(pg) == 'scr-title', active(pg))
 
         section('W9 위생')
         check('콘솔·페이지 에러 0건', not errs, errs[:5])
@@ -505,7 +524,7 @@ def main():
         # 건너뛴 검사는 '통과'가 아니다 — 그 동작은 이번 실행에서 확인되지 않았다.
         for x in SKIP: print('  --   ' + x)
         print(f'PASS(부분) — 실패는 없지만 위 {len(SKIP)}건은 음성 없는 줄 때문에 검사하지 못했다(건너뜀은 통과가 아니다)')
-        return 0
+        return 3
     print('PASS — 대사 음성 검증 전부 통과')
     return 0
 
