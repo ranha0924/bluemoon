@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""대사 음성 자동 검증 — W1~W9.
+"""대사 음성 자동 검증 — W0~W9.
 
 로컬 서버가 필요하다:  python3 -m http.server 8899  (저장소 루트에서)
 
-  python3 tools/build-voice.py check && python3 tools/verify-voice.py
+  python3 tools/verify-voice.py                    # W0 이 build-voice.py check 를 먼저 돌린다
+  python3 tools/verify-voice.py --allow-unvoiced   # 대사를 고쳐 일부 줄의 음성을 포기한 뒤
 
 음성은 '실제 입력'(클릭·키)으로만 시작시킨다 — 자동재생 허용 플래그를 주지 않으므로,
 제스처 없이 play() 가 통하는 환경이면 W1 이 먼저 실패한다(검증이 공허해지는 것을 막는다).
 기대값은 전부 페이지에서 읽는다(VOICE.have · VOICE.key): 대사를 고쳐 일부 줄이 무음이
 된 뒤에도 '파일 있는 줄은 재생, 없는 줄은 무음·무요청'을 그대로 검사한다.
 
-W1 자가검증(무제스처 재생 거부)   W2 전체 플레이 — 사건 2개 × 표준/빠른, 모든 대사가
-제 파일로 재생되고 화면에 뜬 음성 전부(VOICE.have)를 한 번 이상 들었는지
-W3 정지 경로(다음 줄·대화 종료·답변 닫기 4종·인물 선택으로·로비 이탈 3종)
-W4 같은 질문 다시 묻기   W5 음소거 연동   W6 고친 대사는 무음·무요청
+이 스크립트는 '재생 동작'을 본다 — 파일의 내용이 그 대사가 맞는지는 W0(build-voice.py check 의
+해시 대조)이 맡는다. 둘은 한 벌이다.
+
+W0 정합성(build-voice.py check)   W1 자가검증(무제스처 재생 거부)
+W2 전체 플레이 — 사건 2개 × 표준/빠른, 대화 화면의 모든 줄·심문 답변·엔딩 글이 제 파일로
+재생되고 탑재된 음성 전부(VOICE.have)를 한 번 이상 들었는지
+W3 정지 경로(다음 줄·대화 종료·답변 닫기 4종·인물 선택으로·로비 이탈 4종)
+W4 같은 질문 다시 묻기   W5 음소거 연동·음량 불변   W6 고친 대사는 무음·무요청
 W7 키보드만으로 완주   W8 키오스크 무입력 복귀   W9 위생(에러·4xx·외부 요청)
 """
 import json, os, subprocess, sys, time, urllib.request
@@ -46,7 +51,8 @@ def active(pg): return pg.evaluate("document.querySelector('.screen.active').id"
 ST = """(()=>{ const a=VOICE.el;
   return {scr:document.querySelector('.screen.active').id, cur:VOICE.cur,
     file:a&&a.currentSrc?a.currentSrc.split('/').pop().split('?')[0]:null,
-    paused:a?a.paused:true, t:a?a.currentTime:0, muted:a?a.muted:null, err:a&&a.error?a.error.code:null}; })()"""
+    paused:a?a.paused:true, t:a?a.currentTime:0, muted:a?a.muted:null, vol:a?a.volume:null,
+    err:a&&a.error?a.error.code:null}; })()"""
 LINE = """(()=>{ const l=G.dlgQueue[G.dlgIdx], who=l.name.split(' · ')[0], k=VOICE.key(who,l.text);
   return {who, key:k, has:VOICE.have.has(k), typing:!!G._tw}; })()"""
 
@@ -173,8 +179,17 @@ def play(pg, idx, fast, url=None):
     timer_ok = sim_then_reveal(pg, tag, problems)
     check(f'{tag} 모든 대사가 제 파일로 재생(파일 없는 줄은 무음)', not problems, problems[:3])
     check(f'{tag} 타이머가 연 진상 공개 첫 줄도 입력 없이 재생', timer_ok)
-    check(f'{tag} 엔딩 도달 · 음성 정지', active(pg) == 'scr-end' and silent(pg), st(pg))
+    check(f'{tag} 엔딩 도달 · 엔딩 글 낭독(파일 없으면 무음)', active(pg) == 'scr-end' and ending_voice(pg), st(pg))
     return closes
+
+
+def ending_voice(pg):
+    k = pg.evaluate("VOICE.key('내레이션', G.C.ending.text)")
+    if not pg.evaluate(f"VOICE.have.has('{k}')"): return silent(pg)
+    ms = wait_playing(pg, k)
+    if ms is None: return False
+    HEARD.add(k); LAT.append(ms)
+    return True
 
 
 def main():
@@ -182,6 +197,11 @@ def main():
         urllib.request.urlopen(BASE, timeout=3)
     except Exception:
         print('로컬 서버가 없다 — 저장소 루트에서: python3 -m http.server 8899'); return 2
+    section('W0 정합성')
+    extra = [x for x in sys.argv[1:] if x == '--allow-unvoiced']
+    r = subprocess.run([sys.executable, str(ROOT / 'tools/build-voice.py'), 'check', *extra], capture_output=True, text=True)
+    check('build-voice.py check — 대사 ↔ 목록 ↔ 파일 ↔ 대본 ↔ 원본(해시)', r.returncode == 0,
+          ' / '.join((r.stdout + r.stderr).strip().splitlines()[-4:]))
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=chrome(), headless=True)   # 자동재생 허용 플래그 없음
@@ -270,6 +290,18 @@ def main():
         pg.click('#simLobbyBtn'); pg.click('#simLobbyBtn'); pg.wait_for_timeout(3200)
         check('재현 2press 이탈 — 3초 뒤에도 로비·무음·누출음 꺼짐',
               active(pg) == 'scr-lobby' and silent(pg) and pg.evaluate('SND.wantHiss') is False, st(pg))
+        # 엔딩 글이 낭독되는 중에 [다른 사건 파일]
+        start(pg, 0, True); dialog(pg, 'W3', []); pg.evaluate(ready)
+        pg.click('#deduceBtn'); dialog(pg, 'W3', [])
+        for _ in range(n):
+            pg.keyboard.press(str(pg.evaluate('G.DQ[G.deduceIdx].ans') + 1)); pg.wait_for_timeout(1750)
+        sim_then_reveal(pg, 'W3', [])
+        told = ending_voice(pg)
+        pg.click('#certBtn', no_wait_after=True); pg.wait_for_timeout(300); kept = st(pg)
+        pg.click('#scr-end .btn >> nth=1'); pg.wait_for_timeout(80)
+        check('엔딩 글 낭독 중 [수사관 임명장]은 음성을 끊지 않고, [다른 사건 파일]은 끊는다',
+              told and (not pg.evaluate("VOICE.have.size") or not kept['paused']) and active(pg) == 'scr-lobby' and silent(pg),
+              (told, kept, st(pg)))
 
         section('W4 같은 질문 다시 묻기')
         start(pg, 0, False); dialog(pg, 'W4', [])
@@ -294,6 +326,7 @@ def main():
         wait_playing(pg, ka); m_on = st(pg)['muted']
         check('사운드 끄면 음성도 muted, 다시 켜면 풀린다', [m0, m_off_idle, m_off, m_on] == [False, True, True, False],
               [m0, m_off_idle, m_off, m_on])
+        check('음량은 파일에 구워져 있다 — 재생 중 volume 은 1 그대로', st(pg)['vol'] == 1, st(pg))
 
         section('W6 고친 대사')
         pg.goto(BASE + '?fast=0'); pg.wait_for_timeout(400)

@@ -14,10 +14,12 @@
 파일
   tools/voice/script.json   대사별 {key, who, src, text(화면 표기), tts(낭독문), ship}
                             tts 는 숫자·단위를 한글로 풀고(60℃→육십 도) 지문은 연기 태그로 바꾼 것.
-                            ship:false 는 게임에 싣지 않는 보험용 원본(단서 설명·탐정의 질문).
+                            ship:false 는 게임에 싣지 않는 보험용 원본(탐정의 질문 선택지).
   tools/voice/cast.json     화자 → ElevenLabs 목소리·모델·설정
   tools/voice/masters/      API 가 준 원본 mp3 (재인코딩의 출발점 — API 키가 없어도 음량·비트레이트를 다시 맞출 수 있다)
-  tools/voice/takes.json    합성 기록(시드·길이·음성→텍스트 역검증 결과)
+  tools/voice/takes.json    합성·인코딩 기록 — 시드·길이·음성→텍스트 역검증 결과, 그리고 원본과 탑재 파일의
+                            sha256. check 가 이것으로 '파일 내용이 그 대사의 것인가'를 본다(이름만 맞고
+                            내용이 뒤바뀐 파일, 대본·배역을 바꿔 놓고 다시 합성하지 않은 원본을 잡는다).
 
 키 = FNV-1a 32bit( UTF-8( 화자 + '|' + [[ ]] 를 벗긴 대사 ) ) — index.html 의 VOICE.key 와 같다.
 대사를 고치면 키가 달라져 그 줄은 무음이 된다. 재합성은 API 키가 있을 때만 가능하므로,
@@ -79,6 +81,10 @@ def script():
     return s
 
 
+def sha(p):
+    return hashlib.sha256(Path(p).read_bytes()).hexdigest()[:16]
+
+
 def have_now():
     m = HAVE_RE.search(SRC.read_text(encoding='utf-8'))
     if not m: die('index.html 에서 const VOICE_HAVE = "…"; 한 줄을 찾지 못했다')
@@ -111,8 +117,9 @@ ENUM_JS = r"""(()=>{ const out=[], W=n=>n.split(' · ')[0];
       add(ck+'.PEOPLE.'+pk+'.'+i+'.a', W(C.PEOPLE[pk].name), q.a, true);
       add(ck+'.PEOPLE.'+pk+'.'+i+'.q', '한세인', q.q, false); });
     for(const k in C.CLUES){ const c=C.CLUES[k];
-      add(ck+'.CLUES.'+k+'.desc', '단서', c.desc, false);
-      if(c.fast) add(ck+'.CLUES.'+k+'.fast', '단서', c.fast, false); }
+      add(ck+'.CLUES.'+k+'.desc', '단서', c.desc, true);
+      if(c.fast) add(ck+'.CLUES.'+k+'.fast', '단서', c.fast, true); }
+    if(C.ending&&C.ending.text) add(ck+'.ending', '내레이션', C.ending.text, true);
   } return out; })()"""
 
 
@@ -124,7 +131,8 @@ def chrome():
 
 def page_lines():
     """index.html 을 헤드리스 크롬으로 열어 대사를 열거한다 (file:// — 서버 불필요).
-    spoken=True 는 '말하는 사람이 있는 대사'(게임에 싣는 범위), False 는 단서 설명·탐정의 질문."""
+    spoken=True 는 게임이 소리 내어 읽는 범위(대화 화면의 모든 줄·심문 답변·엔딩 글),
+    False 는 심문 화면의 질문 선택지(탐정의 질문 — 원본만 있고 싣지 않는다)."""
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -179,9 +187,23 @@ def cmd_check(a):
             elif e and not 2.5 < cps < 9: warn.append(f'{k}.mp3 — 말속도가 이상하다: {cps:.1f} 자/초')
         except Exception:
             bad.append(f'{k}.mp3 — 디코드 실패(손상·LFS 포인터?)')
+    takes = load(TAKES) or {}
     for e in sc:
-        if e['who'] not in cast.get('voices', {}): bad.append(f"cast.json 에 화자가 없다: {e['who']}")
-        if not e.get('tts', '').strip(): bad.append(f"낭독문(tts)이 비었다: {e['key']}")
+        k = e['key']; v = cast.get('voices', {}).get(e['who'])
+        if not v: bad.append(f"cast.json 에 화자가 없다: {e['who']}")
+        if not e.get('tts', '').strip(): bad.append(f"낭독문(tts)이 비었다: {k}")
+        m = MASTERS / f'{k}.mp3'
+        if not m.is_file(): continue
+        t = takes.get(k)
+        if not t: bad.append(f'{k} — 원본은 있는데 takes.json 에 합성 기록이 없다'); continue
+        # 파일 이름은 대사의 키일 뿐이다 — 내용이 정말 그 대사의 것인지는 기록해 둔 해시로 본다.
+        if sha(m) != t.get('sha256'): bad.append(f'{k} — 원본이 합성 기록과 다르다(뒤바뀜·손상?)')
+        if t.get('tts') != e['tts']: bad.append(f'{k} — 원본을 합성한 뒤 낭독문(tts)이 바뀌었다 — 다시 합성하거나 대본을 되돌린다')
+        if v and (t.get('voice_id') != v['voice_id'] or t.get('model') != cast.get('model')):
+            bad.append(f"{k} — 원본을 합성한 뒤 배역({e['who']})의 목소리·모델이 바뀌었다 — 다시 합성하거나 cast.json 을 되돌린다")
+        dst = OUT / f'{k}.mp3'
+        if dst.is_file() and sha(dst) != t.get('asset'):
+            bad.append(f'{k}.mp3 — 탑재 파일이 인코딩 기록과 다르다(뒤바뀜·손상?)  → python3 tools/build-voice.py encode')
     unvoiced = [l for k, l in spoken.items() if k not in files]
     for l in unvoiced:
         (warn if a.allow_unvoiced else bad).append(
@@ -251,6 +273,7 @@ def cmd_encode(a):
     miss = [e['key'] for e in sc if not (MASTERS / f"{e['key']}.mp3").is_file()]
     if miss: die(f'원본이 없는 대사 {len(miss)}줄: {miss[:5]} — fetch 가 먼저다')
     OUT.mkdir(parents=True, exist_ok=True)
+    takes = load(TAKES) or {}
     by_who = {}
     for e in sc: by_who.setdefault(e['who'], []).append(e)
     total = 0
@@ -269,11 +292,13 @@ def cmd_encode(a):
             dst = OUT / f"{e['key']}.mp3"
             r = run(['ffmpeg', '-hide_banner', '-nostats', '-y', '-i', str(src), '-af', af, '-ac', '1', '-ar', '44100',
                      '-c:a', 'libmp3lame', '-b:a', BITRATE, '-map_metadata', '-1', '-fflags', '+bitexact',
-                     '-flags:a', '+bitexact', '-id3v2_version', '0', '-write_xing', '0', str(dst)], text=True)
+                     '-flags:a', '+bitexact', '-id3v2_version', '0', str(dst)], text=True)
             if r.returncode: die(f'인코딩 실패 {src.name}:\n' + r.stderr[-400:])
             total += dst.stat().st_size
+            takes.setdefault(e['key'], {})['asset'] = sha(dst)   # check 가 '이 파일이 이 원본의 인코딩인가'를 본다
         oi, otp = loud([OUT / f"{e['key']}.mp3" for e in es])
         print(f'{who:6} {len(es):2}줄  원본 {i:6.1f} LUFS / {tp:5.1f} dBTP  이득 {gain:+5.1f} dB  →  {oi:6.1f} LUFS / {otp:5.1f} dBTP')
+    dump(TAKES, dict(sorted(takes.items())))
     print(f'{len(sc)}개 · {total / 1e6:.2f} MB · {BITRATE}bps 모노 → assets/voice/  (이어서 manifest → check)')
     return 0
 
@@ -368,7 +393,7 @@ def cmd_fetch(a):
             if d > 0.6 and sc_ >= a.accept: break
         best.pop('tmp').replace(MASTERS / f"{e['key']}.mp3")
         takes[e['key']] = {'who': e['who'], 'voice_id': v['voice_id'], 'model': cast['model'], 'tts': e['tts'],
-                           'sha256': hashlib.sha256((MASTERS / f"{e['key']}.mp3").read_bytes()).hexdigest()[:16], **best}
+                           'sha256': sha(MASTERS / f"{e['key']}.mp3"), **best}   # 새 원본 → 옛 인코딩 기록(asset)은 버린다
         dump(TAKES, dict(sorted(takes.items())))
         flag = '' if best['score'] >= a.accept else '   ← 확인 필요'
         print(f"[{n}/{len(todo)}] {e['key']} {e['who']:5} take {best['take']} {best['dur']:5.2f}s 일치 {best['score']:.2f}{flag}")

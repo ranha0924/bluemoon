@@ -1261,20 +1261,21 @@ const BGM = {
 };
 
 /* ---------- 대사 음성 (VOICE) ----------
-   인물 대사를 미리 합성해 둔 파일(assets/voice/<키>.mp3, ElevenLabs TTS — 생성·검수는
-   tools/build-voice.py, 대본·배역·원본은 tools/voice/)을 대사가 뜰 때 튼다. 실행 중에는
-   어떤 API 도 부르지 않는다.
+   대화 화면의 모든 줄(인물 대사·내레이션·단서 설명)과 심문 답변, 엔딩 글을 미리 합성해 둔
+   파일(assets/voice/<키>.mp3, ElevenLabs TTS — 생성·검수는 tools/build-voice.py, 대본·배역·
+   원본은 tools/voice/)로 튼다. 실행 중에는 어떤 API 도 부르지 않는다.
    키 = FNV-1a 32bit( UTF-8( 화자 + '|' + PLAIN(대사) ) ) 의 16진 8자리 — '내용 주소'다.
    대사를 고치면 키가 달라져 그 줄만 조용히 무음이 된다: 어긋난 음성이 나오는 일도,
    없는 파일을 요청하는 일도 구조적으로 없다(재합성은 API 키가 있을 때만 가능하다).
-   화자는 화면에 뜨는 이름의 ' · ' 앞부분(나원래·한세인·내레이션…)이라 엔진은 배역을
-   모른다 — 단서 설명('단서 · …')은 파일이 없어 그대로 무음이고, 새 사건도 엔진 수정이 없다.
+   화자는 화면에 뜨는 이름의 ' · ' 앞부분(나원래·한세인·내레이션·단서…)이라 엔진은 배역을
+   모른다 — 누구 목소리로 읽을지는 tools/voice/cast.json 이 정하고(단서 설명은 탐정의 독백),
+   파일이 없는 줄은 그대로 무음이라 새 사건도 엔진 수정이 없다.
    VOICE_HAVE 는 실제로 있는 파일의 키 목록이다(build-voice.py manifest 가 이 한 줄을 쓴다).
    <audio> 는 하나를 계속 쓴다 — 첫 재생이 startCase 의 클릭/Enter 제스처 안이라, 타이머가
    여는 대사(재현 뒤 진상 공개 등)도 같은 요소로 그대로 이어진다. 음소거는 BGM 과 같이
    muted(SND.on 연동). 음량은 파일에 구워 두고 volume 은 건드리지 않는다(iOS 는 volume 을
    무시한다). 정지 지점은 G.show() 하나 — 화면이 바뀌면 음성도 끝난다(+ 답변 패널 닫기). */
-const VOICE_HAVE = "005784f5 01939e0d 0201d87c 064582c4 0e565ade 213ec5a0 2a583473 2b541913 30bc7cbe 33b65f24 36d2671f 3ad82ca3 3bfb3d8c 3da2decc 4f42dc37 50f3463c 51e8beb5 54ffb5ad 567dddf5 58e8ba09 5bea1849 5fc29d44 6099644e 665d1132 6bd718dc 6ef27b71 6fbd1b40 70fd0cbe 7539bca3 7d8ea07d 87147b2a 87ef5f7e 8a22097b 90d7674d 911010f7 93ee39d3 96a0bade 9759c5b2 97b01489 97fed309 9cb996d1 9d5441ff a1064ba3 a56bd81c aca4f3bc b3a0164d b679f0d8 b7889bea ba76aeb4 be9816cc d069d70b d2c81353 e1068e6f e23de203 e394b130 e68c8748 ec528641 ed3e6f27 f52f65c4 fc2acccf fd962baa ffc2489e";
+const VOICE_HAVE = "005784f5 00f6754f 01939e0d 0201d87c 064582c4 07e4a8bb 0e565ade 0ebdc736 1551e2c0 213ec5a0 2a583473 2b541913 2e913d44 30bc7cbe 33b65f24 33ee0a1d 3590e1f8 36cd4d7c 36d2671f 3ad82ca3 3bfb3d8c 3da2decc 3eb218fd 4c6cad34 4f42dc37 50f3463c 51e8beb5 53020af3 54ffb5ad 55174d14 554825eb 567dddf5 58e8ba09 5bea1849 5fc29d44 6099644e 6441a2ef 64b7e6bb 665d1132 6bd718dc 6ef27b71 6fbd1b40 70fd0cbe 72fbe528 7539bca3 7c96a586 7c9f1815 7d8ea07d 86b96cde 87147b2a 87ef5f7e 8a22097b 8ca6ea73 8cb648bb 90829f5d 90d7674d 911010f7 93ee39d3 96a0bade 9759c5b2 97b01489 97fed309 983a10bb 9cb996d1 9d5441ff a1064ba3 a3a48b3f a4e9f6fe a4f22217 a56bd81c ab4c1681 aca4f3bc b3a0164d b679f0d8 b7889bea ba76aeb4 be9816cc c138902a d069d70b d2c81353 d5c631bc d9d48a10 dbf98c0e df5685d0 e1068e6f e23de203 e394b130 e68c8748 ebe86518 ec528641 ed3e6f27 f528340f f52f65c4 fc2acccf fd962baa ffc2489e";
 const VOICE = {
   el:null, cur:null, url:{}, have:new Set(VOICE_HAVE.split(' ').filter(Boolean)),
   key(who, text){
@@ -1282,7 +1283,7 @@ const VOICE = {
     for(let i=0;i<b.length;i++){ h^=b[i]; h=Math.imul(h,0x01000193); }
     return (h>>>0).toString(16).padStart(8,'0');
   },
-  // 파일이 없는 줄(단서 설명·수정된 대사)은 직전 음성만 끊고 조용히 넘어간다.
+  // 파일이 없는 줄(고친 대사·새 사건)은 직전 음성만 끊고 조용히 넘어간다.
   say(who, text){
     const k=this.key(who,text);
     if(!this.have.has(k)){ this.stop(); return; }
@@ -2584,6 +2585,7 @@ const G = {
     const cb=this.$('certBtn');
     cb.disabled=false; cb.innerHTML=ICON.award+'수사관 임명장';
     this.show('scr-end');
+    VOICE.say('내레이션', e.text);   // 엔딩 글 낭독 — show() 뒤여야 한다(show 가 음성을 끊는다)
   },
 
   /* ----- 수사관 임명장 저장 -----
