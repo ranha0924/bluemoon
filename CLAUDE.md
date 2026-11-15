@@ -121,7 +121,7 @@ UI를 수정했다면 최소한 아래를 확인한다.
    (위 '로컬 서버로 띄워서 검사' 규칙의 예외).
 
 6. **대사 음성** — 대사 텍스트·대화 엔진·심문 화면·사운드 토글을 건드렸다면
-   `python3 tools/verify-voice.py`(W0~W9, 서버 8899)를 돌린다 — W0 이 `build-voice.py check`다.
+   `python3 tools/verify-voice.py`(W0~W10, 서버 8899)를 돌린다 — W0 이 `build-voice.py check`다.
    `check`는 음성이 사라진 줄과, 이름만 맞고 내용이 다른 파일(해시 대조)을 실패로 알린다 —
    음성을 잃는 것을 감수하기로 했다면 `prune` → `manifest` → `verify-voice.py --allow-unvoiced`
    (대사를 되돌렸다면 `prune` → `encode` → `manifest` 로 되살아난다). 마지막 줄이 `PASS(부분)`(종료

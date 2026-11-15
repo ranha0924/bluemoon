@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""대사 음성 자동 검증 — W0~W9.
+"""대사 음성 자동 검증 — W0~W10.
 
 로컬 서버가 필요하다:  python3 -m http.server 8899  (저장소 루트에서)
 
@@ -17,16 +17,24 @@
 
 W0 정합성(build-voice.py check)   W1 자가검증(무제스처 재생 거부)
 W2 전체 플레이 — 사건 2개 × 표준/빠른, 대화 화면의 모든 줄·심문 답변·엔딩 글이 제 파일로
-재생되고 탑재된 음성 전부(VOICE.have)를 한 번 이상 들었는지
-W3 정지 경로(다음 줄·대화 종료·답변 닫기 4종·인물 선택으로·로비 이탈 4종)
+재생되고 탑재된 음성 전부(VOICE.have)를 한 번 이상 들었는지. 음성이 나던 중에 대화를 닫으면
+넘어간 화면(허브·방·추리)에서 끊겨 있는지도 여기서 센다.
+W3 정지 경로(다음 줄·답변 닫기 4종·인물 선택으로·로비 이탈 4종)
    — 검사에 쓸 줄은 페이지에서 고른다(음성 있는 답변, 음성 있는 줄이 둘·셋 이어지는 대화, 엔딩 글에 음성이
    있는 사건, 빠른 조사 첫 줄에 음성이 있는 사건). 그런 줄이 하나도 없어 못 한 검사는 '건너뜀'으로 적고,
    그때는 마지막 줄이 'PASS(부분)'이다(건너뜀은 통과가 아니다). 재생 중인 음성 요소의 수도 센다 — 겹치면 실패.
-종료 코드: 0 전부 통과 · 1 실패 있음 · 2 실행 불가(서버 없음·다른 폴더) · 3 실패는 없지만 건너뛴 검사 있음.
+W4 같은 질문 다시 묻기   W5 음소거 연동(첫 음성 전에 끈 경우 포함)·음량 불변   W6 고친 대사는 무음·무요청
+W7 키보드만으로 완주
+W8 키오스크 무입력 복귀 — 음성이 나는 도중에도(짧은 한도), 끝난 뒤에도(음성보다 긴 한도) 돌아가는지,
+   그리고 음성이 시작·종료돼도 무입력 시계(G._kioskLast)가 마지막 실제 입력 시각 그대로인지
+W9 끝까지 듣기 — 대사 한 줄과 심문 답변 하나를 아무 입력 없이 끝까지 둔다(한 번만·처음부터 끝까지·
+   도중에 끊기거나 되감기지 않고·줄이 저절로 넘어가지 않는다). W2~W7 은 줄마다 0.1초쯤 듣고 넘기므로
+   '재생 도중'에 벌어지는 일은 여기서만 본다 — 그것도 고른 두 줄에서만이다.
+W10 위생(에러·4xx·외부 요청)
+종료 코드: 0 전부 통과 · 1 실패 있음 · 2 실행 불가(서버 없음·다른 폴더·playwright 없음) · 3 실패는 없지만 건너뛴 검사 있음.
 한계: 여기서 보는 것은 헤드리스 크로미움에서의 동작이다. 고친 줄이 많을수록 같은 동작을 확인하는 횟수가
-줄어든다(각 검사에 붙은 '(N회)'가 그 횟수다).
-W4 같은 질문 다시 묻기   W5 음소거 연동·음량 불변   W6 고친 대사는 무음·무요청
-W7 키보드만으로 완주   W8 키오스크 무입력 복귀   W9 위생(에러·4xx·외부 요청)
+줄어든다 — 검사 이름의 '(N회)'는 음성이 실제로 나던 경우만 센 횟수다. 전부 통과가 '음성 동작 전부 확인'은
+아니다: 실제로 소리를 듣는 것이 아니고, 재생 도중의 동작은 W9 의 두 줄로만 본다.
 """
 import json, os, subprocess, sys, time, urllib.request
 from pathlib import Path
@@ -62,13 +70,18 @@ def active(pg): return pg.evaluate("document.querySelector('.screen.active').id"
 
 # 검사는 VOICE.el 하나만 들여다보면 안 된다 — say() 가 줄마다 새 요소를 만들면 예전 음성이 계속 울려도
 # VOICE.el 은 멀쩡해 보인다. play() 가 불린 모든 미디어 요소를 적어 두고, 음성 파일을 내고 있는 수(n)를 센다.
-TRACK = """(()=>{ const set=new Set(); window.__media=set; const P=HTMLMediaElement.prototype, play=P.play;
-  P.play=function(){ set.add(this); return play.apply(this, arguments); }; })()"""
+# 음성 파일에 대한 play() 호출 수(__plays)와 마지막 '실제 입력' 시각(__lastInput — 게임의 무입력 시계가 듣는
+# 것과 같은 네 이벤트)도 적는다. 이 스크립트는 페이지 스크립트보다 먼저 실행되므로 리스너도 먼저 불린다.
+TRACK = """(()=>{ const set=new Set(); window.__media=set; window.__plays=0; window.__lastInput=0;
+  const P=HTMLMediaElement.prototype, play=P.play;
+  P.play=function(){ set.add(this); if(/assets\\/voice\\//.test(this.src||'')) window.__plays++; return play.apply(this, arguments); };
+  for(const ev of ['pointerdown','keydown','touchstart','wheel'])
+    addEventListener(ev, ()=>{ window.__lastInput=Date.now(); }, {capture:true, passive:true}); })()"""
 ST = """(()=>{ const a=VOICE.el;
   return {scr:document.querySelector('.screen.active').id, cur:VOICE.cur,
     n:[...(window.__media||[])].filter(m=>!m.paused&&!m.ended&&/assets\\/voice\\//.test(m.currentSrc)).length,
     file:a&&a.currentSrc?a.currentSrc.split('/').pop().split('?')[0]:null,
-    paused:a?a.paused:true, t:a?a.currentTime:0, muted:a?a.muted:null, vol:a?a.volume:null,
+    paused:a?a.paused:true, ended:a?a.ended:false, t:a?a.currentTime:0, muted:a?a.muted:null, vol:a?a.volume:null,
     err:a&&a.error?a.error.code:null}; })()"""
 LINE = """(()=>{ const l=G.dlgQueue[G.dlgIdx], who=l.name.split(' · ')[0], k=VOICE.key(who,l.text);
   return {who, key:k, has:VOICE.have.has(k), typing:!!G._tw}; })()"""
@@ -112,10 +125,70 @@ PICK_RUN = """(n=>{ const cs=Object.keys(CASES);      // 음성 있는 줄이 n�
       for(let i=0;i+n<=L.length;i++) if(K.slice(i,i+n).every(k=>VOICE.have.has(k)))
         return {ci, ck:cs[ci], arr, fast:arr.startsWith('fast'), i, k:K}; }
   return null; })"""
-PICK_FAST0 = """(()=>{ const cs=Object.keys(CASES);      // 빠른 조사 프롤로그의 첫 줄에 음성이 있는 사건
+PICK_FAST0 = """(()=>{ const cs=Object.keys(CASES), out=[];      // 빠른 조사 프롤로그의 첫 줄에 음성이 있는 사건들
   for(let ci=0;ci<cs.length;ci++){ const l=(CASES[cs[ci]].fastPrologue||CASES[cs[ci]].PROLOGUE)[0];
-    if(VOICE.have.has(VOICE.key(l.name.split(' · ')[0], l.text))) return ci; }
-  return null; })()"""
+    if(VOICE.have.has(VOICE.key(l.name.split(' · ')[0], l.text))) out.push(ci); }
+  return out; })()"""
+PICK_FIRSTS = """(()=>{ const cs=Object.keys(CASES), out=[];     // 프롤로그 첫 줄(표준·빠른 조사) 가운데 음성이 있는 것 전부
+  for(let ci=0;ci<cs.length;ci++) for(const fast of [false,true]){ const C=CASES[cs[ci]];
+    if(fast&&!C.fastPrologue) continue;
+    const l=(fast?C.fastPrologue:C.PROLOGUE)[0], k=VOICE.key(l.name.split(' · ')[0], l.text);
+    if(VOICE.have.has(k)) out.push({ci,fast,key:k}); }
+  return out; })()"""
+PICK_ANSWERS = """(()=>{ const cs=Object.keys(CASES), out=[];    // 음성이 있는 심문 답변 전부
+  for(let ci=0;ci<cs.length;ci++){ const P=CASES[cs[ci]].PEOPLE, ps=Object.keys(P);
+    for(let pi=0;pi<ps.length;pi++){ const p=P[ps[pi]];
+      for(let qi=0;qi<p.qs.length;qi++){ const k=VOICE.key(p.name.split(' · ')[0], p.qs[qi].a);
+        if(VOICE.have.has(k)) out.push({ci,pi,qi,key:k}); } } }
+  return out; })()"""
+# 끝까지 들을 줄은 긴 것으로 고른다(도중에 벌어지는 일을 볼 시간이 길수록 좋다). 길이는 고르는 데만 쓰고,
+# 검사의 기대값은 재생 중인 요소에서 읽는다 — 기록이 없으면 첫 후보를 쓴다.
+try: DUR = {k: v.get('dur') or 0 for k, v in json.loads((ROOT / 'tools/voice/takes.json').read_text('utf-8')).items()}
+except Exception: DUR = {}
+LISTEN = """(()=>{ const a=VOICE.el, L=window.__lt={ended:0,early:0,seeking:0,play:0,emptied:0,plays0:window.__plays};
+  a.addEventListener('ended',()=>L.ended++); a.addEventListener('pause',()=>{ if(!a.ended) L.early++; });
+  for(const e of ['seeking','play','emptied']) a.addEventListener(e,()=>L[e]++); })()"""
+
+
+def listen(pg, key, alive):
+    """key 의 음성을 아무 입력 없이 끝까지 듣는다. (문제 목록, 음성 길이)를 돌려준다 — 목록이 비면 정상.
+    alive 는 그동안 변하면 안 되는 화면 상태를 읽는 JS 식(문자열을 돌려주는)이다."""
+    if wait_playing(pg, key) is None: return ['재생이 시작되지 않음'], 0
+    pg.evaluate(LISTEN); a0 = pg.evaluate(alive)
+    d = pg.evaluate('isFinite(VOICE.el.duration) ? VOICE.el.duration : 0')
+    why, last, ended, t0 = [], 0, False, time.time()
+    while time.time() - t0 < d + 4:
+        s = st(pg)
+        if s['file'] != key + '.mp3': why.append(f"다른 파일로 바뀜 {s['file']}"); break
+        if s['t'] < last - 0.05: why.append(f"재생 위치가 뒤로 감 {last:.2f}→{s['t']:.2f}초")
+        last = s['t']
+        if s['ended']: ended = True; break
+        if s['paused']: why.append(f"{s['t']:.2f}초에서 멈춤({d:.1f}초 음성)"); break
+        if s['n'] != 1: why.append(f"울리는 음성 요소가 {s['n']}개")
+        pg.wait_for_timeout(100)
+    if not ended and not why: why.append(f'{d:.1f}초 음성이 {last:.2f}초까지 가고 끝나지 않음')
+    if ended and last < d - 0.3: why.append(f'{d:.1f}초 음성이 {last:.2f}초에서 끝남')
+    pg.wait_for_timeout(700)       # 끝난 뒤에 저절로 벌어지는 일(다시 재생·줄 넘김)을 볼 틈
+    L = pg.evaluate('Object.assign({plays:window.__plays}, window.__lt)'); a1 = pg.evaluate(alive)
+    if ended and L['ended'] != 1: why.append(f"ended 이벤트 {L['ended']}회")
+    if L['early'] or L['seeking'] or L['play'] or L['emptied'] or L['plays'] != L['plays0']:
+        why.append(f"도중에 재생을 건드림(일시정지 {L['early']}·탐색 {L['seeking']}·재시작 {L['play']}·"
+                   f"다시 로드 {L['emptied']}·play() 호출 {L['plays'] - L['plays0']})")
+    if st(pg)['n'] != 0: why.append('끝난 뒤에도 음성이 난다')
+    if a1 != a0: why.append(f'화면이 저절로 바뀜 {a0} → {a1}')
+    return list(dict.fromkeys(why)), d
+
+
+def until_title(pg, deadline):
+    """처음 화면(키오스크 reload)으로 돌아올 때까지 지켜본다. (돌아왔는가, 돌아오기 직전의 상태)."""
+    last = None
+    while time.time() < deadline:
+        try: s = st(pg)
+        except Exception:           # reload 도중에는 실행 컨텍스트가 사라진다
+            pg.wait_for_timeout(100); continue
+        if s['scr'] == 'scr-title': return True, last
+        last = s; pg.wait_for_timeout(100)
+    return False, last
 
 
 def open_run(pg, run, edit=None):
@@ -143,13 +216,14 @@ def ask(pg, ans, menu_open=False):
 
 
 EXITS = {}      # 대화가 끝나 넘어간 화면 → [마지막 줄의 음성이 나던 중에 나간 횟수, 그중 음성이 남은 횟수]
+NOPLAY = set()  # 마지막 줄에 음성 파일이 있는데도 재생되지 않은 채 넘어간 화면(건너뜀 사유를 가른다)
 TIMER = []      # 타이머가 연 진상 공개 첫 줄(음성 있는 경우)이 입력 없이 재생됐는가
 
 
 def dialog(pg, tag, problems, first_enter=True):
     """대화 화면을 끝까지 넘기며 줄마다 음성을 검사한다. 진행은 키보드(Enter)만 쓴다.
     마지막 줄의 음성이 나던 중에 대화를 닫았으면, 넘어간 화면(허브·방·추리)에서 끊겼는지도 본다."""
-    voiced = False
+    voiced = had = False
     for _ in range(40):
         scr = active(pg)
         if scr != 'scr-dialog':
@@ -157,9 +231,10 @@ def dialog(pg, tag, problems, first_enter=True):
                 pg.wait_for_timeout(40); ok = silent(pg)
                 e = EXITS.setdefault(scr, [0, 0]); e[0] += 1; e[1] += (not ok)
                 if not ok: problems.append(f'{tag} 대화가 끝났는데 {scr} 에서 음성이 계속 난다 {st(pg)}')
+            elif had: NOPLAY.add(scr)
             return
         ln = pg.evaluate(LINE)
-        voiced = False
+        voiced = False; had = ln['has']
         if ln['has']:
             ms = wait_playing(pg, ln['key']); voiced = ms is not None
             if ms is None: problems.append(f"{tag} {ln['who']} {ln['key']} 재생 안 됨 {st(pg)}")
@@ -202,6 +277,8 @@ def clues(pg, tag, problems):
 
 
 CLOSERS = ['Escape', 'Enter', 'Space', 'click']
+NV = [0]            # 음성이 나던 답변을 닫은 횟수(전체 플레이를 통틀어) — 닫는 방법 4종을 이 순번으로 돌린다
+ANS_NOPLAY = [0]    # 음성 파일이 있는데 재생되지 않은 답변 수
 
 
 def talks(pg, tag, problems, closes):
@@ -214,19 +291,23 @@ def talks(pg, tag, problems, closes):
                 if b[0] or b[1]: continue
                 pg.click(f'#talkQs .q-btn >> nth={qi}')
                 k = pg.evaluate(f"(()=>{{const p=G.C.PEOPLE['{pk}']; return VOICE.key(p.name.split(' · ')[0], p.qs[{qi}].a)}})()")
+                voiced = False
                 if pg.evaluate(f"VOICE.have.has('{k}')"):
                     ms = wait_playing(pg, k)
-                    if ms is None: problems.append(f'{tag} 답변 {pk}#{qi} {k} 재생 안 됨 {st(pg)}')
+                    if ms is None: problems.append(f'{tag} 답변 {pk}#{qi} {k} 재생 안 됨 {st(pg)}'); ANS_NOPLAY[0] += 1
                     else:
-                        HEARD.add(k); LAT.append(ms)
+                        voiced = True; HEARD.add(k); LAT.append(ms)
                         if st(pg)['n'] != 1: problems.append(f'{tag} 답변 {pk}#{qi} 음성이 겹친다 {st(pg)}')
                 elif not silent(pg): problems.append(f'{tag} 답변 {pk}#{qi} 파일 없는데 소리가 남')
-                how = CLOSERS[n % 4]; n += 1
+                # 음성이 나던 답변만 '닫으면 음성 정지' 횟수에 든다 — 음성 없는 답변을 닫는 것은 그 검사가 아니다
+                if voiced: how = CLOSERS[NV[0] % 4]; NV[0] += 1
+                else: how = CLOSERS[n % 4]; n += 1
                 if how == 'click': pg.click('#talkAnswer')
                 else: pg.keyboard.press(how)
                 pg.wait_for_timeout(40)
                 shut = pg.evaluate("G.$('talkAnswer').style.display") == 'none' and silent(pg)
-                closes.setdefault(how, []).append(shut)
+                if voiced: closes.setdefault(how, []).append(shut)
+                elif not shut: problems.append(f'{tag} 답변 {pk}#{qi} 닫기({how}) — 패널이 남거나 소리가 남')
             pg.click('#talkBack'); pg.click('#talkMenuBtn')
 
 
@@ -294,7 +375,9 @@ def main():
     r = subprocess.run([sys.executable, str(ROOT / 'tools/build-voice.py'), 'check', *extra], capture_output=True, text=True)
     check('build-voice.py check — 대사 ↔ 목록 ↔ 파일 ↔ 대본 ↔ 원본(해시)', r.returncode == 0,
           ' / '.join((r.stdout + r.stderr).strip().splitlines()[-4:]))
-    from playwright.sync_api import sync_playwright
+    try: from playwright.sync_api import sync_playwright
+    except ImportError:
+        print('playwright 가 없다 — pip install playwright (브라우저는 깔린 것을 쓴다)'); return 2
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=chrome(), headless=True)   # 자동재생 허용 플래그 없음
         section('W1 자가검증')
@@ -338,14 +421,18 @@ def main():
         for scr, nm in (('scr-hub', '허브'), ('scr-room', '방'), ('scr-deduce', '추리')):
             e = EXITS.get(scr)
             if e: check(f'음성이 나던 중에 대화를 닫으면 {nm} 화면에서는 끊겨 있다 ({e[0]}회)', e[1] == 0, f'{e[1]}회 남음')
-            else: skip(f'음성이 나던 중에 대화를 닫으면 {nm} 화면에서는 끊겨 있다', f'{nm} 화면으로 끝나는 대화의 마지막 줄에 음성이 없다')
+            else: skip(f'음성이 나던 중에 대화를 닫으면 {nm} 화면에서는 끊겨 있다',
+                       '마지막 줄의 음성이 재생되지 않아 확인하지 못했다(위 실패 참고)' if scr in NOPLAY
+                       else f'{nm} 화면으로 끝나는 대화의 마지막 줄에 음성이 없다')
         lat = sorted(LAT)
         print(f'       재생 시작까지: 중앙값 {lat[len(lat) // 2]:.0f}ms · 최대 {lat[-1]:.0f}ms (localhost, {len(lat)}회)')
 
         section('W3 정지 경로')
         for how in CLOSERS:
             v = closes.get(how, [])
-            check(f'답변 닫기 — {how} ({len(v)}회) 패널 닫힘·음성 정지', bool(v) and all(v))
+            if v: check(f'음성이 나던 답변 닫기 — {how} ({len(v)}회) 패널 닫힘·음성 정지', all(v), f'{v.count(False)}회 남음')
+            else: skip(f'음성이 나던 답변 닫기 — {how} 패널 닫힘·음성 정지',
+                       '답변 음성이 재생되지 않아 확인하지 못했다(위 실패 참고)' if ANS_NOPLAY[0] else '이 방법으로 닫을 음성 있는 답변이 남지 않았다')
         duo = pg.evaluate(PICK_RUN + '(2)'); tri = pg.evaluate(PICK_RUN + '(3)'); ans = pg.evaluate(PICK_ANSWER)
         if duo:
             open_run(pg, duo)
@@ -434,9 +521,20 @@ def main():
             check('사운드 끄면 음성도 muted, 다시 켜면 풀린다', [m0, m_off_idle, m_off, m_on] == [False, True, True, False],
                   [m0, m_off_idle, m_off, m_on])
             check('음량은 파일에 구워져 있다 — 재생 중 volume 은 1 그대로', on_air and not s_['paused'] and s_['vol'] == 1, s_)
+            # 음성 요소가 아직 없을 때 사운드를 끈 경우. 사운드 버튼은 허브에 있고 프롤로그가 먼저 요소를 만들기 때문에,
+            # 프롤로그가 통째로 무음인 사건에서만 닿는 경로다 — 이 페이지 안에서 프롤로그를 고쳐(W6 과 같은 방식) 만든다.
+            pg.goto(BASE + '?fast=0'); pg.wait_for_timeout(400)
+            pg.evaluate(f"CASES[Object.keys(CASES)[{ans['ci']}]].PROLOGUE.forEach(l=>{{ l.text+=' 부탁드립니다.'; }})")
+            pg.click('#scr-title .btn'); pg.click(f"#caseGrid .case-card >> nth={ans['ci']}"); settle(pg)
+            dialog(pg, 'W5', [])
+            no_el = active(pg) == 'scr-hub' and pg.evaluate('VOICE.el===null')
+            pg.click('#sndBtn')
+            ask(pg, ans); on_air = wait_playing(pg, ka) is not None; s_ = st(pg)
+            check('첫 음성이 나기 전에 사운드를 꺼도 첫 음성부터 muted', no_el and on_air and s_['muted'] is True, (no_el, s_))
         else:
             for nm in ('닫았다가 다시 물으면 처음부터 다시 재생', '답변이 떠 있는 채로 다시 눌러도 처음부터 재생',
-                       '사운드 끄면 음성도 muted, 다시 켜면 풀린다', '음량은 파일에 구워져 있다 — 재생 중 volume 은 1 그대로'):
+                       '사운드 끄면 음성도 muted, 다시 켜면 풀린다', '음량은 파일에 구워져 있다 — 재생 중 volume 은 1 그대로',
+                       '첫 음성이 나기 전에 사운드를 꺼도 첫 음성부터 muted'):
                 skip(nm, '음성 있는 심문 답변이 하나도 없다')
 
         section('W6 고친 대사')
@@ -490,24 +588,63 @@ def main():
         check('마우스 없이 엔딩까지 — 음성 재생·정지 정상', active(pg) == 'scr-end' and not prob, (active(pg), prob[:3]))
 
         section('W8 키오스크 무입력 복귀')
-        kc = pg.evaluate(PICK_FAST0)
-        start(pg, kc if kc is not None else 0, True); t0 = time.time()
-        if kc is not None:
-            # 음성 길이보다 조금 긴 무입력 한도를 건다 — 음성이 시작될 때도, 나는 동안에도, 끝나는 순간에도
-            # 무입력 시계를 되감지 않아야 한도 직후에 복귀한다(셋 중 하나라도 되감으면 그때까지 복귀하지 못한다).
-            k0 = pg.evaluate(LINE)['key']; was = wait_playing(pg, k0) is not None
-            d = pg.evaluate('isFinite(VOICE.el.duration) ? VOICE.el.duration : 0')
-            pg.evaluate(f'G.KIOSK_WARN={int((d + 1) * 1000)}; G.KIOSK_OUT={int((d + 2.5) * 1000)}')
-            pg.wait_for_timeout(1500); still = st(pg)
-            pg.wait_for_timeout(max(0, int((t0 + d + 5.0 - time.time()) * 1000)))
-            check(f'음성이 시작되고·나고·끝나도({d:.1f}초) 무입력이면 처음 화면으로 돌아간다(음성은 입력이 아니다)',
-                  was and still['cur'] == k0 and active(pg) == 'scr-title' and pg.evaluate('VOICE.el===null'), (still, active(pg)))
+        DRIFT = 'G._kioskLast - window.__lastInput'    # 무입력 시계가 마지막 실제 입력보다 얼마나 뒤에 있나(ms)
+        cands = pg.evaluate(PICK_FAST0)
+        if cands:
+            for kc in cands:       # 3초 한도보다 넉넉히 긴 음성으로 시작하는 사건을 찾는다
+                start(pg, kc, True); t_in = time.time()
+                k0 = pg.evaluate(LINE)['key']; was = wait_playing(pg, k0) is not None
+                d = pg.evaluate('VOICE.el && isFinite(VOICE.el.duration) ? VOICE.el.duration : 0')
+                if d >= 6: break
+            # ① 음성이 나는 도중에 한도(3초)가 찬다 — 음성이 울리고 있다고 복귀를 미루면 안 된다
+            pg.evaluate('G.KIOSK_WARN=1500; G.KIOSK_OUT=3000')
+            pg.wait_for_timeout(1200); drift = pg.evaluate(DRIFT)
+            back, last = until_title(pg, t_in + 3 + 2.5)      # 틱이 1초 간격이라 3~4초 사이에 reload 된다(+다시 뜨는 시간)
+            sounding = bool(last) and last['cur'] == k0 and not last['paused'] and not last['ended']   # 돌아가기 직전까지 음성이 나고 있었다
+            check('음성이 시작돼도 무입력 시계는 마지막 실제 입력 시각 그대로다', was and 0 <= drift <= 20, f'{drift}ms 어긋남')
+            if d >= 6:
+                check(f'음성이 나는 도중이어도({d:.1f}초 음성·한도 3초) 무입력이면 처음 화면으로 돌아간다',
+                      was and back and sounding and pg.evaluate('VOICE.el===null'), (back, last))
+            else:
+                skip('음성이 나는 도중이어도 무입력이면 처음 화면으로 돌아간다', '빠른 조사 첫 줄의 음성이 6초보다 짧다')
+            # ② 음성보다 긴 한도 — 음성이 끝나는 순간에도 시계를 되감지 않아야 한도 직후에 돌아간다
+            start(pg, kc, True); t_in = time.time()
+            was = wait_playing(pg, k0) is not None
+            pg.evaluate(f'G.KIOSK_WARN={int((d + 1.5) * 1000)}; G.KIOSK_OUT={int((d + 3) * 1000)}')
+            ended = False
+            while time.time() < t_in + d + 2 and not ended:
+                ended = pg.evaluate('!!VOICE.el && VOICE.el.ended'); pg.wait_for_timeout(100)
+            pg.wait_for_timeout(400); drift = pg.evaluate(DRIFT)
+            back, last = until_title(pg, t_in + d + 3 + 2.5)
+            check(f'음성이 끝난 뒤에도({d:.1f}초) 무입력 시계는 그대로이고, 한도가 차면 처음 화면으로 돌아간다',
+                  was and ended and 0 <= drift <= 20 and back and pg.evaluate('VOICE.el===null'),
+                  (f'끝남 {ended}', f'{drift}ms 어긋남', f'복귀 {back}', last))
         else:
-            skip('음성이 나와도 무입력이면 처음 화면으로 돌아간다(음성은 입력이 아니다)', '빠른 조사 첫 줄에 음성이 있는 사건이 없다')
+            for nm in ('음성이 시작돼도 무입력 시계는 마지막 실제 입력 시각 그대로다', '음성이 나는 도중이어도 무입력이면 처음 화면으로 돌아간다',
+                       '음성이 끝난 뒤에도 무입력 시계는 그대로이고, 한도가 차면 처음 화면으로 돌아간다'):
+                skip(nm, '빠른 조사 첫 줄에 음성이 있는 사건이 없다')
+            start(pg, 0, True)
             pg.evaluate('G.KIOSK_WARN=1500; G.KIOSK_OUT=3000'); pg.wait_for_timeout(5200)
             check('무입력이면 처음 화면으로 돌아간다(음성 없는 줄에서)', active(pg) == 'scr-title', active(pg))
 
-        section('W9 위생')
+        section('W9 끝까지 듣기')
+        firsts = sorted(pg.evaluate(PICK_FIRSTS), key=lambda x: -DUR.get(x['key'], 0))
+        if firsts:
+            f = firsts[0]; start(pg, f['ci'], f['fast'])
+            why, d = listen(pg, f['key'], "JSON.stringify([document.querySelector('.screen.active').id, G.dlgIdx])")
+            check(f'대사 한 줄을 아무 입력 없이 끝까지 듣는다({d:.1f}초) — 한 번만·끊김 없이·줄이 저절로 넘어가지 않는다', not why, why)
+        else:
+            skip('대사 한 줄을 아무 입력 없이 끝까지 듣는다 — 한 번만·끊김 없이·줄이 저절로 넘어가지 않는다', '프롤로그 첫 줄에 음성이 있는 사건이 없다')
+        answers = sorted(pg.evaluate(PICK_ANSWERS), key=lambda x: -DUR.get(x['key'], 0))
+        if answers:
+            la = answers[0]; start(pg, la['ci'], False); dialog(pg, 'W9', [])
+            ask(pg, la)
+            why, d = listen(pg, la['key'], "JSON.stringify([document.querySelector('.screen.active').id, G.$('talkAnswer').style.display])")
+            check(f'심문 답변 하나를 아무 입력 없이 끝까지 듣는다({d:.1f}초) — 한 번만·끊김 없이·패널이 저절로 닫히지 않는다', not why, why)
+        else:
+            skip('심문 답변 하나를 아무 입력 없이 끝까지 듣는다 — 한 번만·끊김 없이·패널이 저절로 닫히지 않는다', '음성 있는 심문 답변이 하나도 없다')
+
+        section('W10 위생')
         check('콘솔·페이지 에러 0건', not errs, errs[:5])
         check('외부 네트워크 요청 0건', not ext, ext[:5])
         check('4xx/5xx 응답 0건', not bad_status, bad_status[:5])
