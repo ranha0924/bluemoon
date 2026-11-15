@@ -186,7 +186,12 @@ def until_title(pg, deadline):
         try: s = st(pg)
         except Exception:           # reload 도중에는 실행 컨텍스트가 사라진다
             pg.wait_for_timeout(100); continue
-        if s['scr'] == 'scr-title': return True, last
+        if s['scr'] == 'scr-title':
+            # 막 다시 뜬 페이지는 그림 23장을 받는 중이다 — 여기서 곧바로 다음 goto 를 하면 그 요청들이
+            # 중단(ERR_ABORTED)돼 위생 검사에 거짓 실패가 난다. 다 받을 때까지 기다린다.
+            try: pg.wait_for_load_state('networkidle', timeout=10000)
+            except Exception: pass
+            return True, last
         last = s; pg.wait_for_timeout(100)
     return False, last
 
